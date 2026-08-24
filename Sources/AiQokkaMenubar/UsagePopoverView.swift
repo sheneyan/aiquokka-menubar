@@ -5,6 +5,8 @@ import SwiftUI
 struct UsagePopoverView: View {
     @ObservedObject var store: UsageStore
 
+    private let maxContentHeight: CGFloat = 560
+
     var body: some View {
         VStack(spacing: 0) {
             header
@@ -30,7 +32,8 @@ struct UsagePopoverView: View {
             Divider()
             footer
         }
-        .frame(width: 380, height: 520)
+        .frame(width: 380)
+        .fixedSize(horizontal: false, vertical: true)
         .background(.background)
     }
 
@@ -95,12 +98,11 @@ struct UsagePopoverView: View {
             }
             .padding(16)
         }
-        .frame(maxHeight: .infinity)
+        .frame(maxHeight: maxContentHeight)
     }
 
     private func emptyState(systemImage: String, title: String, message: String) -> some View {
         VStack(spacing: 10) {
-            Spacer()
             Image(systemName: systemImage)
                 .font(.title2)
                 .foregroundStyle(.secondary)
@@ -118,9 +120,8 @@ struct UsagePopoverView: View {
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
             }
-            Spacer()
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity)
         .padding(24)
     }
 
@@ -151,8 +152,18 @@ private struct ProviderUsageSection: View {
     var body: some View {
         DisclosureGroup {
             VStack(alignment: .leading, spacing: 10) {
-                ForEach(provider.windows.indices, id: \.self) { index in
-                    UsageWindowRow(window: provider.windows[index])
+                if let error = provider.error {
+                    Label("读取失败", systemImage: "exclamationmark.triangle.fill")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.orange)
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                } else {
+                    ForEach(provider.windows.indices, id: \.self) { index in
+                        UsageWindowRow(window: provider.windows[index])
+                    }
                 }
 
                 if !provider.extras.isEmpty {
@@ -195,7 +206,13 @@ private struct ProviderSummaryRow: View {
                 }
             }
 
-            if let highestUsage = provider.highestUsagePercent {
+            if let error = provider.error {
+                Label("读取失败：\(error)", systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .lineLimit(3)
+                    .textSelection(.enabled)
+            } else if let highestUsage = provider.highestUsagePercent {
                 ProgressView(value: max(0, min(highestUsage, 100)), total: 100)
                     .tint(progressColor(for: highestUsage))
             } else {
@@ -287,4 +304,3 @@ private struct KeyValueRow: View {
         }
     }
 }
-

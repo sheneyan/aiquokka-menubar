@@ -18,6 +18,7 @@ struct ProviderUsage: Identifiable, Equatable, Sendable {
     let id: String
     let name: String
     let plan: String?
+    let error: String?
     let windows: [UsageWindow]
     let extras: [UsageExtra]
 

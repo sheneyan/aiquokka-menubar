@@ -36,11 +36,36 @@ final class UsageYAMLDecoderTests: XCTestCase {
         XCTAssertEqual(zeta.windows[0].resetText, "soon")
     }
 
+    func testPreservesProviderErrorsInsteadOfTreatingThemAsEmptyUsage() throws {
+        let snapshot = try decoder.decode(yaml: fixture(named: "errors"))
+
+        let codex = try XCTUnwrap(snapshot.providers.first { $0.id == "codex" })
+        XCTAssertEqual(codex.error, "Get https://chatgpt.com/backend-api/wham/usage: context deadline exceeded")
+        XCTAssertTrue(codex.windows.isEmpty)
+
+        let grok = try XCTUnwrap(snapshot.providers.first { $0.id == "grok" })
+        XCTAssertEqual(grok.error, "Get https://cli-chat-proxy.grok.com/v1/billing?format=credits: context deadline exceeded")
+        XCTAssertTrue(grok.windows.isEmpty)
+    }
+
     func testMalformedYAMLThrowsTypedError() {
         XCTAssertThrowsError(try decoder.decode(yaml: fixture(named: "invalid"))) { error in
             guard case UsageDecodeError.invalidDocument = error else {
                 return XCTFail("Expected invalidDocument, got \(error)")
             }
+        }
+    }
+
+    func testDecodesRealInstalledAiquokkaOutputWithUsageWindows() async throws {
+        let candidates = UsageCommandRunner.defaultCandidatePaths()
+        let available = try XCTUnwrap(candidates.first(where: { FileManager.default.isExecutableFile(atPath: $0.path) }))
+        let runner = UsageCommandRunner(candidatePaths: [available])
+        let yaml = try await runner.fetchYAML()
+        let snapshot = try decoder.decode(yaml: yaml)
+
+        XCTAssertFalse(snapshot.providers.isEmpty)
+        for provider in snapshot.providers {
+            XCTAssertFalse(provider.windows.isEmpty, "Expected usage windows for \(provider.id)")
         }
     }
 

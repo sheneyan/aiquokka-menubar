@@ -1,0 +1,4 @@
+codex:
+  error: "Get https://chatgpt.com/backend-api/wham/usage: context deadline exceeded"
+grok:
+  error: "Get https://cli-chat-proxy.grok.com/v1/billing?format=credits: context deadline exceeded"

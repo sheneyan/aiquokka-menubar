@@ -37,9 +37,10 @@ struct UsageYAMLDecoder {
     private func decodeProvider(id: String, rawProvider: [String: Any]) -> ProviderUsage {
         let name = stringValue(rawProvider["provider"]) ?? id
         let plan = stringValue(rawProvider["plan"])
+        let error = stringValue(rawProvider["error"])
         let windows = decodeWindows(rawProvider["windows"])
         let extras = decodeExtras(rawProvider["extra"])
-        return ProviderUsage(id: id, name: name, plan: plan, windows: windows, extras: extras)
+        return ProviderUsage(id: id, name: name, plan: plan, error: error, windows: windows, extras: extras)
     }
 
     private func decodeWindows(_ rawWindows: Any?) -> [UsageWindow] {
