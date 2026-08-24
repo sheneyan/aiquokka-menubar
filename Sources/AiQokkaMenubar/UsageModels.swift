@@ -4,6 +4,10 @@ struct UsageSnapshot: Equatable, Sendable {
     let providers: [ProviderUsage]
     let fetchedAt: Date
 
+    var highestUsagePercent: Double? {
+        providers.compactMap(\.highestUsagePercent).max()
+    }
+
     init(providers: [ProviderUsage], fetchedAt: Date) {
         self.providers = providers.sorted { $0.id.localizedStandardCompare($1.id) == .orderedAscending }
         self.fetchedAt = fetchedAt
