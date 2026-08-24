@@ -1,0 +1,11 @@
+zeta:
+  provider: Zeta
+  windows:
+    - label: Quota
+      used_percent: "12.5"
+      resets_at: soon
+  unexpected: ignored
+alpha:
+  provider: Alpha
+  unexpected:
+    nested: value

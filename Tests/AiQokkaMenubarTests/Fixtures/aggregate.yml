@@ -1,0 +1,22 @@
+codex:
+  provider: Codex
+  plan: plus
+  windows:
+    - label: Weekly
+      used_percent: 4
+      resets_at: 2026-08-31T11:06:55+08:00
+  extra:
+    - label: Resets
+      value: "1 (0 usable now)"
+    - label: Credits
+      value: "110.4952793750"
+grok:
+  provider: Grok
+  plan: GrokPro
+  windows:
+    - label: Weekly
+      used_percent: 30
+      resets_at: 2026-08-25T08:04:04.193998Z
+  extra:
+    - label: Grok Code
+      value: yes
