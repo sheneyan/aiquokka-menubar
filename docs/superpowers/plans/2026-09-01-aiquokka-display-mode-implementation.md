@@ -10,13 +10,15 @@
 
 ---
 
-### Task 1: Add the persisted display-mode model
+### Task 1: Add the persisted display-mode model — complete
+
+Completion evidence: the model and persistence tests were committed in `3495fe5`, `d3281c0`, and `a9d3359`; the final focused suite passed 3/3 tests.
 
 **Files:**
 - Create: `Sources/AiQokkaMenubar/DisplayMode.swift`
 - Create: `Tests/AiQokkaMenubarTests/DisplayModeTests.swift`
 
-- [ ] **Step 1: Write failing persistence tests**
+- [x] **Step 1: Write failing persistence tests**
 
 Create an isolated `UserDefaults` suite for every test and cover the default, round trip, and unknown-value behavior:
 
@@ -65,7 +67,7 @@ final class DisplayModeSettingsTests: XCTestCase {
 }
 ```
 
-- [ ] **Step 2: Run the focused test to verify the missing model fails**
+- [x] **Step 2: Run the focused test to verify the missing model fails**
 
 Run:
 
@@ -75,7 +77,7 @@ swift test --filter DisplayModeSettingsTests
 
 Expected: compilation fails because `DisplayModeSettings` and `DisplayMode` do not exist yet.
 
-- [ ] **Step 3: Implement the minimal model**
+- [x] **Step 3: Implement the minimal model**
 
 Create the two supported modes and a main-actor observable settings object. `mode` writes only the selected raw value; initialization reads an unknown or missing value as `.menuBar`.
 
@@ -118,7 +120,7 @@ final class DisplayModeSettings: ObservableObject {
 }
 ```
 
-- [ ] **Step 4: Run the focused test to verify persistence**
+- [x] **Step 4: Run the focused test to verify persistence**
 
 Run:
 
@@ -128,19 +130,21 @@ swift test --filter DisplayModeSettingsTests
 
 Expected: all three tests pass.
 
-- [ ] **Step 5: Commit the model and tests**
+- [x] **Step 5: Commit the model and tests**
 
 ```bash
 git add Sources/AiQokkaMenubar/DisplayMode.swift Tests/AiQokkaMenubarTests/DisplayModeTests.swift
 git commit -m "feat: persist aiquokka display mode"
 ```
 
-### Task 2: Add the standalone window controller implementation
+### Task 2: Add the standalone window controller implementation — complete
+
+Completion evidence: the controller was committed in `73839e6`; the Swift 6 selector-based termination observer fix was committed in `bdd74a6`; the final full suite passed 21/21 tests with warnings treated as errors.
 
 **Files:**
 - Create: `Sources/AiQokkaMenubar/StandaloneWindowController.swift`
 
-- [ ] **Step 1: Define the controller behavior before integration**
+- [x] **Step 1: Define the controller behavior before integration**
 
 The controller must own at most one window, host the existing usage view through `NSHostingController`, restore the frame using a fixed autosave name, and activate the app when showing. It receives the shared `UsageStore` and `DisplayModeSettings`; it must not create another loader or refresh task.
 
@@ -166,7 +170,7 @@ final class StandaloneWindowController: NSObject, NSWindowDelegate {
 }
 ```
 
-- [ ] **Step 2: Implement show, close, and frame restoration**
+- [x] **Step 2: Implement show, close, and frame restoration**
 
 Create a titled, closable, miniaturizable, resizable `NSWindow` with a 380pt initial content width. Set `NSHostingController.sizingOptions = [.intrinsicContentSize]`, assign the hosted `UsagePopoverView` with the standalone surface, set `setFrameAutosaveName`, then call `setFrameUsingName` and center only when no saved frame exists.
 
@@ -225,7 +229,7 @@ func close() {
 }
 ```
 
-- [ ] **Step 3: Implement close synchronization and termination protection**
+- [x] **Step 3: Implement close synchronization and termination protection**
 
 Register for `NSApplication.willTerminateNotification` and set `terminating = true` before the window closes during app termination. In `windowWillClose`, clear the owned window; only when the close is user initiated, the app is not terminating, and the setting is still `.standaloneWindow`, set `displayMode.mode = .menuBar`. This keeps a manually closed window recoverable through the menu bar without changing the saved mode during a normal quit.
 
@@ -241,24 +245,26 @@ func windowWillClose(_ notification: Notification) {
 }
 ```
 
-- [ ] **Step 4: Defer the compile checkpoint until the shared view API is added**
+- [x] **Step 4: Defer the compile checkpoint until the shared view API is added**
 
 The controller's `show()` method intentionally calls the `UsagePopoverView` initializer introduced in Task 3, so the controller and view API must be compiled together. Do not run a test command at this intermediate boundary; commit the controller and use Task 3 Step 3 as the first compile checkpoint after both files have their final signatures.
 
-- [ ] **Step 5: Commit the window controller**
+- [x] **Step 5: Commit the window controller**
 
 ```bash
 git add Sources/AiQokkaMenubar/StandaloneWindowController.swift
 git commit -m "feat: add standalone usage window controller"
 ```
 
-### Task 3: Complete the shared usage view and wire the standalone controller
+### Task 3: Complete the shared usage view and wire the standalone controller — complete
+
+Completion evidence: shared view/App wiring was committed in `89ff2d6`, with the shared-surface clarification in `4f048d2`; the final focused suite passed 3/3 tests and the full suite passed 21/21.
 
 **Files:**
 - Modify: `Sources/AiQokkaMenubar/UsagePopoverView.swift`
 - Modify: `Sources/AiQokkaMenubar/App.swift`
 
-- [ ] **Step 1: Add a surface parameter and display-mode picker to the usage view**
+- [x] **Step 1: Add a surface parameter and display-mode picker to the usage view**
 
 Add a small internal surface enum and make the view receive the shared settings plus a mode-change closure:
 
@@ -305,7 +311,7 @@ private var displayModePicker: some View {
 
 Keep the existing 380pt width, content-driven vertical sizing, and 560pt scroll limit for both surfaces. The standalone surface may use the standard window's resizable frame, but it must not reintroduce a fixed 520pt height.
 
-- [ ] **Step 2: Integrate shared settings and controller into the App**
+- [x] **Step 2: Integrate shared settings and controller into the App**
 
 Keep the `DisplayModeSettings` created in Task 1 Step 3 and retain the `StandaloneWindowController` created in Task 2 beside the existing shared `UsageStore`. Keep `MenuBarExtra` unconditionally declared so the status item remains available in both modes. Pass `.menuBar` to its usage view and route mode changes to `controller.show()` or `controller.close()`.
 
@@ -335,7 +341,7 @@ MenuBarExtra {
 .menuBarExtraStyle(.window)
 ```
 
-- [ ] **Step 3: Compile and run focused tests**
+- [x] **Step 3: Compile and run focused tests**
 
 Run:
 
@@ -345,7 +351,7 @@ swift test --filter DisplayModeSettingsTests
 
 Expected: all display-mode persistence tests pass and the target compiles with both SwiftUI surfaces.
 
-- [ ] **Step 4: Commit shared-surface integration**
+- [x] **Step 4: Commit shared-surface integration**
 
 ```bash
 git add Sources/AiQokkaMenubar/App.swift Sources/AiQokkaMenubar/UsagePopoverView.swift
