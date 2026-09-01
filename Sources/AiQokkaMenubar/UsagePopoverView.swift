@@ -2,8 +2,16 @@ import AppKit
 import Foundation
 import SwiftUI
 
+internal enum UsageSurface {
+    case menuBar
+    case standaloneWindow
+}
+
 struct UsagePopoverView: View {
     @ObservedObject var store: UsageStore
+    @ObservedObject var displayMode: DisplayModeSettings
+    let surface: UsageSurface
+    let onDisplayModeChanged: (DisplayMode) -> Void
 
     private let maxContentHeight: CGFloat = 560
 
@@ -30,6 +38,7 @@ struct UsagePopoverView: View {
             }
 
             Divider()
+            displayModePicker
             footer
         }
         .frame(width: 380)
@@ -99,6 +108,33 @@ struct UsagePopoverView: View {
             .padding(16)
         }
         .frame(maxHeight: maxContentHeight)
+    }
+
+    private var displayModePicker: some View {
+        HStack(spacing: 12) {
+            Text("显示方式")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Spacer()
+
+            Picker("显示方式", selection: Binding(
+                get: { displayMode.mode },
+                set: { newMode in
+                    displayMode.mode = newMode
+                    onDisplayModeChanged(newMode)
+                }
+            )) {
+                ForEach(DisplayMode.allCases) { mode in
+                    Text(mode.title)
+                        .tag(mode)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.segmented)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
     }
 
     private func emptyState(systemImage: String, title: String, message: String) -> some View {
