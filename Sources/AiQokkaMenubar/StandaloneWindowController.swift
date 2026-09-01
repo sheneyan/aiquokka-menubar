@@ -10,7 +10,6 @@ final class StandaloneWindowController: NSObject, NSWindowDelegate {
     private let displayMode: DisplayModeSettings
     private var closingForModeChange = false
     private var terminating = false
-    private var terminationObserver: NSObjectProtocol?
 
     private(set) var window: NSWindow?
 
@@ -19,21 +18,16 @@ final class StandaloneWindowController: NSObject, NSWindowDelegate {
         self.displayMode = displayMode
         super.init()
 
-        terminationObserver = NotificationCenter.default.addObserver(
-            forName: NSApplication.willTerminateNotification,
-            object: NSApplication.shared,
-            queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated {
-                self?.terminating = true
-            }
-        }
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(applicationWillTerminate(_:)),
+            name: NSApplication.willTerminateNotification,
+            object: NSApplication.shared
+        )
     }
 
-    deinit {
-        if let terminationObserver {
-            NotificationCenter.default.removeObserver(terminationObserver)
-        }
+    @objc private func applicationWillTerminate(_ notification: Notification) {
+        terminating = true
     }
 
     func show() {
