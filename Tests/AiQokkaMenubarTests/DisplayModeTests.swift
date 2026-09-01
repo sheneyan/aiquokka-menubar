@@ -3,50 +3,49 @@ import Foundation
 import XCTest
 
 @MainActor
-final class DisplayModeTests: XCTestCase {
-    private var suiteName = ""
-    private var userDefaults: UserDefaults!
-
-    override func setUp() {
-        super.setUp()
-        suiteName = "AiQokkaMenubar.DisplayModeTests.\(UUID().uuidString)"
-        userDefaults = UserDefaults(suiteName: suiteName)
-        userDefaults.removePersistentDomain(forName: suiteName)
-    }
-
-    override func tearDown() {
-        userDefaults.removePersistentDomain(forName: suiteName)
-        userDefaults = nil
-        suiteName = ""
-        super.tearDown()
-    }
+final class DisplayModeSettingsTests: XCTestCase {
 
     func testMissingValueDefaultsToMenuBar() {
-        let settings = DisplayModeSettings(userDefaults: userDefaults)
+        let defaults = makeDefaults()
+        let settings = DisplayModeSettings(userDefaults: defaults)
 
         XCTAssertEqual(settings.mode, .menuBar)
     }
 
-    func testReadsStandaloneWindowAndPersistsChangedMode() {
-        userDefaults.set(DisplayMode.standaloneWindow.rawValue, forKey: DisplayModeSettings.userDefaultsKey)
+    func testPersistsStandaloneWindowForTheNextInstance() {
+        let defaults = makeDefaults()
+        let first = DisplayModeSettings(userDefaults: defaults)
 
-        let settings = DisplayModeSettings(userDefaults: userDefaults)
+        first.mode = .standaloneWindow
 
-        XCTAssertEqual(settings.mode, .standaloneWindow)
+        let second = DisplayModeSettings(userDefaults: defaults)
 
-        settings.mode = .menuBar
+        XCTAssertEqual(second.mode, .standaloneWindow)
+
+        second.mode = .menuBar
 
         XCTAssertEqual(
-            userDefaults.string(forKey: DisplayModeSettings.userDefaultsKey),
+            defaults.string(forKey: DisplayModeSettings.userDefaultsKey),
             DisplayMode.menuBar.rawValue
         )
     }
 
-    func testUnknownRawValueDefaultsToMenuBar() {
-        userDefaults.set("futureMode", forKey: DisplayModeSettings.userDefaultsKey)
+    func testUnknownStoredValueFallsBackToMenuBar() {
+        let defaults = makeDefaults()
+        defaults.set("future-mode", forKey: DisplayModeSettings.userDefaultsKey)
 
-        let settings = DisplayModeSettings(userDefaults: userDefaults)
+        let settings = DisplayModeSettings(userDefaults: defaults)
 
         XCTAssertEqual(settings.mode, .menuBar)
+    }
+
+    private func makeDefaults() -> UserDefaults {
+        let suiteName = "AiQokkaDisplayModeTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        addTeardownBlock {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+        return defaults
     }
 }
