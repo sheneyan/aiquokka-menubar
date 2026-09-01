@@ -2,6 +2,8 @@ import AppKit
 import Foundation
 import SwiftUI
 
+// Both surfaces intentionally share complete content and behavior; keep this semantic
+// distinction for entry-point clarity and future surface-specific differences.
 internal enum UsageSurface {
     case menuBar
     case standaloneWindow

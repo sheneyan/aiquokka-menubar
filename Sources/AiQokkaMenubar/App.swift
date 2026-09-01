@@ -4,7 +4,7 @@ import SwiftUI
 @main
 struct AiQokkaMenubarApp: App {
     @StateObject private var store: UsageStore
-    @StateObject private var displayMode = DisplayModeSettings()
+    @StateObject private var displayMode: DisplayModeSettings
     private let controller: StandaloneWindowController
 
     init() {
@@ -14,8 +14,9 @@ struct AiQokkaMenubarApp: App {
             let yaml = try await runner.fetchYAML()
             return try decoder.decode(yaml: yaml)
         })
+        let displayMode = DisplayModeSettings()
         _store = StateObject(wrappedValue: store)
-        let displayMode = _displayMode.wrappedValue
+        _displayMode = StateObject(wrappedValue: displayMode)
         let controller = StandaloneWindowController(store: store, displayMode: displayMode)
         self.controller = controller
         store.startAutoRefresh()
