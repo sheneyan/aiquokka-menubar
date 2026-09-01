@@ -4,6 +4,8 @@ import SwiftUI
 @main
 struct AiQokkaMenubarApp: App {
     @StateObject private var store: UsageStore
+    @StateObject private var displayMode: DisplayModeSettings
+    private let controller: StandaloneWindowController
 
     init() {
         let runner = UsageCommandRunner()
@@ -12,13 +14,34 @@ struct AiQokkaMenubarApp: App {
             let yaml = try await runner.fetchYAML()
             return try decoder.decode(yaml: yaml)
         })
+        let displayMode = DisplayModeSettings()
         _store = StateObject(wrappedValue: store)
+        _displayMode = StateObject(wrappedValue: displayMode)
+        let controller = StandaloneWindowController(store: store, displayMode: displayMode)
+        self.controller = controller
         store.startAutoRefresh()
+
+        if displayMode.mode == .standaloneWindow {
+            DispatchQueue.main.async {
+                controller.show()
+            }
+        }
     }
 
     var body: some Scene {
         MenuBarExtra {
-            UsagePopoverView(store: store)
+            UsagePopoverView(
+                store: store,
+                displayMode: displayMode,
+                surface: .menuBar,
+                onDisplayModeChanged: { mode in
+                    if mode == .standaloneWindow {
+                        controller.show()
+                    } else {
+                        controller.close()
+                    }
+                }
+            )
         } label: {
             MenuBarSummaryView(store: store)
         }
