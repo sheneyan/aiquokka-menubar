@@ -357,16 +357,18 @@ git commit -m "feat: switch aiquokka between menu bar and window"
 **Files:**
 - Modify: `docs/superpowers/plans/2026-09-01-aiquokka-display-mode-implementation.md`
 
-- [ ] **Step 1: Run the complete automated suite and packaging script**
+- [x] **Step 1: Run the complete automated suite and packaging script**
 
 Run:
 
 ```bash
 swift test
+swift test -Xswiftc -warnings-as-errors
+swift test --filter DisplayModeSettingsTests
 ./scripts/build-app.sh
 ```
 
-Expected: all tests pass, including the existing local CLI/YAML/proxy/refresh tests, and the script produces `dist/aiquokka.app` with the existing `LSUIElement=true` configuration.
+Evidence on 2026-09-02 from `feature/aiquokka-display-mode` at `4f048d2`: `swift test` exited 0 with 21 tests and 0 failures; `swift test -Xswiftc -warnings-as-errors` exited 0 with 21 tests and 0 failures and no warnings; the filtered suite exited 0 with 3 tests and 0 failures. `./scripts/build-app.sh` exited 0 and produced `dist/aiquokka.app`. `Info.plist` contains `LSUIElement = true`; the arm64 executable exists and is `0755`. `dist/` and `.build/` remain ignored and untracked.
 
 - [ ] **Step 2: Launch the packaged app and verify the menu bar surface**
 
@@ -376,6 +378,8 @@ Open `dist/aiquokka.app`, click the `aiquokka` status item, and confirm the popo
 2. a `显示方式` segmented picker with `菜单栏` selected;
 3. the existing refresh and quit controls.
 
+GUI evidence: not verified. Computer Use could not unlock the macOS session because the Mac was locked, so the status item, popover contents, current data, picker selection, refresh control, and quit control were not observed.
+
 - [ ] **Step 3: Verify switching to the standalone window**
 
 Select `独立窗口` in the popover and confirm:
@@ -384,6 +388,8 @@ Select `独立窗口` in the popover and confirm:
 2. the window displays the same timestamp and provider data without triggering a second refresh task;
 3. the window can be dragged to another display;
 4. the menu bar status item remains visible and can still open the popover.
+
+GUI evidence: not verified. The locked macOS session prevented observing or interacting with the packaged window and status item. No claim is made about the window title, shared data, refresh count, drag behavior, or menu-bar availability.
 
 - [ ] **Step 4: Verify both recovery paths and position restoration**
 
@@ -395,7 +401,9 @@ Test these exact transitions:
 4. choose `独立窗口`, move the window, quit the App, and relaunch it; the window reopens at the saved position;
 5. click `退出` while standalone mode is selected, relaunch, and confirm the saved mode remains `独立窗口`.
 
-- [ ] **Step 5: Check the final diff and commit verification notes**
+GUI evidence: not verified. The locked macOS session prevented the lifecycle, relaunch, autosave-position, and persistence flows from being exercised. A second display was not available for multi-screen drag verification.
+
+- [x] **Step 5: Check the final diff and commit verification notes**
 
 Run:
 
@@ -406,3 +414,5 @@ git log --oneline --decorate -6
 ```
 
 Record the final test count and packaged artifact path in the handoff. Do not add credentials, provider output, or generated build directories to Git.
+
+Additional packaging note: the executable reports an ad-hoc linker signature. `codesign --verify --deep --strict dist/aiquokka.app` exited 1 because the copied app bundle has no complete bundle signature; formal signing/notarization remains outside this verification.
