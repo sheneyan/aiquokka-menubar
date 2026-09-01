@@ -28,6 +28,10 @@ final class DisplayModeSettingsTests: XCTestCase {
             defaults.string(forKey: DisplayModeSettings.userDefaultsKey),
             DisplayMode.menuBar.rawValue
         )
+
+        let third = DisplayModeSettings(userDefaults: defaults)
+
+        XCTAssertEqual(third.mode, .menuBar)
     }
 
     func testUnknownStoredValueFallsBackToMenuBar() {
