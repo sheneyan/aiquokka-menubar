@@ -12,6 +12,13 @@ final class UsageAlertEvaluatorTests: XCTestCase {
         XCTAssertTrue(evaluation.alerts.isEmpty)
     }
 
+    func testTwentyPercentUsageTriggersTooFastWhenWindowJustStarted() throws {
+        let evaluation = evaluate(usedPercent: 20, label: "Weekly", resetAfter: 7 * day)
+
+        let alert = try XCTUnwrap(evaluation.alerts.first)
+        XCTAssertEqual(alert.kind, .tooFast)
+    }
+
     func testWeeklyUsageFifteenPointsAheadOfClockTriggersTooFast() throws {
         let evaluation = evaluate(usedPercent: 30, label: "Weekly", resetAfter: 6 * day)
 
@@ -23,6 +30,18 @@ final class UsageAlertEvaluatorTests: XCTestCase {
         let evaluation = evaluate(usedPercent: 29, label: "Weekly", resetAfter: 6 * day)
 
         XCTAssertTrue(evaluation.alerts.isEmpty)
+    }
+
+    func testExactFifteenPointPaceGapTriggersTooFast() throws {
+        let timeProgress = (day / (7 * day)) * 100
+        let evaluation = evaluate(
+            usedPercent: timeProgress + 15,
+            label: "Weekly",
+            resetAfter: 6 * day
+        )
+
+        let alert = try XCTUnwrap(evaluation.alerts.first)
+        XCTAssertEqual(alert.kind, .tooFast)
     }
 
     func testEightyAndNinetyFivePercentSelectDifferentLevels() throws {

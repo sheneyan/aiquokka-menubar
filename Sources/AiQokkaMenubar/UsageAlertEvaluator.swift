@@ -9,21 +9,14 @@ struct UsageAlertEvaluator: Sendable {
     func evaluate(snapshot: UsageSnapshot, now: Date) -> UsageAlertEvaluation {
         let windows = snapshot.providers.flatMap { provider -> [UsageWindowAlertEvaluation] in
             guard provider.error == nil else { return [] }
-            return provider.windows.map { evaluate(provider: provider, window: $0, now: now) }
+            return provider.windows.compactMap { evaluate(provider: provider, window: $0, now: now) }
         }
         return UsageAlertEvaluation(windows: windows)
     }
 
-    private func evaluate(provider: ProviderUsage, window: UsageWindow, now: Date) -> UsageWindowAlertEvaluation {
+    private func evaluate(provider: ProviderUsage, window: UsageWindow, now: Date) -> UsageWindowAlertEvaluation? {
         guard let used = window.usedPercent, used.isFinite, (0...100).contains(used) else {
-            return UsageWindowAlertEvaluation(
-                providerID: provider.id,
-                providerName: provider.name,
-                windowLabel: window.label,
-                resetDate: window.resetDate,
-                activeKinds: [],
-                selectedAlert: nil
-            )
+            return nil
         }
 
         var activeKinds = Set<UsageAlertKind>()

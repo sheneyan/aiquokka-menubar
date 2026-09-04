@@ -52,6 +52,17 @@ final class UsageAlertCoordinatorTests: XCTestCase {
         XCTAssertEqual(client.sentAlerts.map(\.kind), [.nearingLimit, .nearingLimit])
     }
 
+    func testMissingPercentDoesNotClearPreviouslySentAlert() async {
+        let client = RecordingUsageNotificationClient()
+        let coordinator = makeCoordinator(client: client)
+
+        await coordinator.process(snapshot: snapshot(usedPercent: 80), now: now)
+        await coordinator.process(snapshot: snapshot(usedPercent: nil), now: now.addingTimeInterval(60))
+        await coordinator.process(snapshot: snapshot(usedPercent: 80), now: now.addingTimeInterval(120))
+
+        XCTAssertEqual(client.sentAlerts.map(\.kind), [.nearingLimit])
+    }
+
     func testAuthorizationIsRequestedOnlyOnceAcrossRefreshes() async {
         let client = RecordingUsageNotificationClient()
         let coordinator = makeCoordinator(client: client)
@@ -74,7 +85,7 @@ final class UsageAlertCoordinatorTests: XCTestCase {
         )
     }
 
-    private func snapshot(usedPercent: Double) -> UsageSnapshot {
+    private func snapshot(usedPercent: Double?) -> UsageSnapshot {
         let window = UsageWindow(
             label: "Weekly",
             usedPercent: usedPercent,
