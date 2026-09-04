@@ -10,20 +10,32 @@
 
 ---
 
+## 实施状态（2026-09-04）
+
+本计划的用量提醒功能已经落地到 `main`。后续修复记录如下：
+
+- `bbd6a66`：通知授权改为显式用户操作；详情界面显示权限状态和“开启/打开系统设置”入口；构建脚本优先使用本机 Apple Development 签名。
+- `c218a49`：通知权限卡片的长说明限制在剩余宽度内完整自动换行，卡片和独立窗口保持内容自适应高度；新增 `UsageNotificationCardLayoutTests`。
+- 当前验证：`swift test` 45/45 通过；`dist/aiquokka.app` 构建成功，`codesign --verify --deep --strict` 通过。
+- 真实 macOS 的最后一步仍需在已解锁桌面上手动点击“开启”，确认系统授权弹窗；自动化 UI 验证不替代该人工授权步骤。
+
+Task 3 中关于“首次成功快照自动请求授权”的早期示例已被本节记录的显式授权行为取代；实现以当前源码为准。
+
 ## File map
 
 - Create `Sources/AiQokkaMenubar/UsageAlertModels.swift`: alert kinds, severity, alert payloads, and evaluator result value types with no SwiftUI or system-notification dependency.
 - Create `Sources/AiQokkaMenubar/UsageAlertEvaluator.swift`: pure threshold and pace calculations, including safe recognition of known window durations.
 - Create `Sources/AiQokkaMenubar/UsageAlertStateStore.swift`: persisted sent-kind state keyed by provider/window/reset identity; it stores no credentials or raw usage data.
-- Create `Sources/AiQokkaMenubar/UsageNotificationClient.swift`: `UNUserNotificationCenter` adapter and the testable notification protocol.
-- Create `Sources/AiQokkaMenubar/UsageAlertCoordinator.swift`: main-actor orchestration, deduplication, authorization request, and published highest severity.
+- Create `Sources/AiQokkaMenubar/UsageNotificationClient.swift`: `UNUserNotificationCenter` adapter, authorization-state mapping, and the testable notification protocol.
+- Create `Sources/AiQokkaMenubar/UsageAlertCoordinator.swift`: main-actor orchestration, deduplication, explicit authorization request, and published alert/permission state.
 - Modify `Sources/AiQokkaMenubar/UsageStore.swift`: add an async success-only snapshot callback without changing loader, proxy, refresh interval, or error semantics.
 - Modify `Sources/AiQokkaMenubar/App.swift`: construct one coordinator, connect it to the shared store, and expose its severity to the menu bar summary.
 - Create `Tests/AiQokkaMenubarTests/UsageAlertEvaluatorTests.swift`: red-green tests for thresholds, pace, duration recognition, invalid data, and provider errors.
 - Create `Tests/AiQokkaMenubarTests/UsageAlertStateStoreTests.swift`: isolated `UserDefaults` tests for persistence, rearming, reset identity, and data boundaries.
 - Create `Tests/AiQokkaMenubarTests/UsageAlertCoordinatorTests.swift`: fake notification-client tests for authorization, deduplication, escalation, and retry behavior.
+- Create `Tests/AiQokkaMenubarTests/UsageNotificationCardLayoutTests.swift`: fixed-width SwiftUI layout regression test for long permission text.
 - Modify `Tests/AiQokkaMenubarTests/UsageStoreTests.swift`: verify the success callback runs only after a successful refresh.
-- Do not modify `Package.swift` or `Sources/AiQokkaMenubar/Resources/Info.plist`; `UserNotifications` is part of the macOS SDK and the existing app bundle is already an agent/menu-bar app.
+- Do not modify `Package.swift` or `Sources/AiQokkaMenubar/Resources/Info.plist`; `UserNotifications` is part of the macOS SDK. The bundle script signs the assembled app when a local Apple Development identity is available.
 
 ## Domain contracts
 
@@ -557,7 +569,7 @@ git commit -m "feat: persist usage alert state"
 
 - [ ] **Step 1: Write failing coordinator tests with an in-memory notification client**
 
-Define a `@MainActor` recording fake in the test file and cover authorization once, duplicate suppression, escalation, and retry after delivery failure:
+Define a `@MainActor` recording fake in the test file and cover explicit authorization, permission-state refresh without prompting, duplicate suppression, escalation, and retry after delivery failure:
 
 ```swift
 @testable import AiQokkaMenubar
@@ -1006,7 +1018,7 @@ Expected: the script exits 0, the bundle exists at `dist/aiquokka.app`, `LSUIEle
 
 With a local `aiquokka --yml` fixture or a real configured provider, verify each item manually:
 
-1. Launch the app and confirm macOS asks for notification permission after the first successful refresh.
+1. Launch the app, open the menu bar detail or standalone window, click “开启”, and confirm macOS asks for notification permission from that visible user action.
 2. At a fixed 80% window, confirm one warning notification and an orange menu bar bell; refresh repeatedly and confirm no duplicate warning.
 3. Move the same window to 95%, confirm one critical notification and a red menu bar bell.
 4. Restart the app while the same reset window remains at 95%; confirm no duplicate critical notification because state persisted.
