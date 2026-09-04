@@ -368,7 +368,7 @@ private struct ProviderSummaryRow: View {
                     .textSelection(.enabled)
             } else if let highestUsage = provider.highestUsagePercent {
                 ProgressView(value: max(0, min(highestUsage, 100)), total: 100)
-                    .tint(progressColor(for: highestUsage))
+                    .tint(quotaProgressColor(for: highestUsage))
             } else {
                 Text("没有可用的使用率窗口")
                     .font(.caption)
@@ -385,17 +385,6 @@ private struct ProviderSummaryRow: View {
 
     private func percentText(_ percent: Double) -> String {
         String(format: "%.1f%%", percent)
-    }
-
-    private func progressColor(for percent: Double) -> Color {
-        switch percent {
-        case 80...:
-            return .red
-        case 60..<80:
-            return .orange
-        default:
-            return .accentColor
-        }
     }
 
     private func resetSummary(for window: UsageWindow) -> String {
@@ -427,6 +416,7 @@ private struct UsageWindowRow: View {
             }
             if let usedPercent = window.usedPercent {
                 ProgressView(value: max(0, min(usedPercent, 100)), total: 100)
+                    .tint(quotaProgressColor(for: usedPercent))
             }
             if let resetDate = window.resetDate {
                 Text("重置：\(DateFormatter.localizedString(from: resetDate, dateStyle: .short, timeStyle: .short))")
@@ -438,6 +428,17 @@ private struct UsageWindowRow: View {
                     .foregroundStyle(.secondary)
             }
         }
+    }
+}
+
+private func quotaProgressColor(for usedPercent: Double) -> Color {
+    switch UsageQuotaLevel(usedPercent: usedPercent) {
+    case .healthy:
+        return .green
+    case .warning:
+        return .yellow
+    case .critical:
+        return .red
     }
 }
 

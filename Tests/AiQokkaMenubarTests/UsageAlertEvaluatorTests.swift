@@ -84,8 +84,8 @@ final class UsageAlertEvaluatorTests: XCTestCase {
 
     func testAlertSeverityExposesTheMenuBarSymbols() {
         XCTAssertEqual(UsageAlertSeverity.normal.systemImageName, "gauge.with.dots.needle.67percent")
-        XCTAssertEqual(UsageAlertSeverity.warning.systemImageName, "bell.badge")
-        XCTAssertEqual(UsageAlertSeverity.critical.systemImageName, "bell.badge.fill")
+        XCTAssertEqual(UsageAlertSeverity.warning.systemImageName, "gauge.with.dots.needle.67percent")
+        XCTAssertEqual(UsageAlertSeverity.critical.systemImageName, "gauge.with.dots.needle.67percent")
     }
 
     private var day: TimeInterval { 24 * 60 * 60 }

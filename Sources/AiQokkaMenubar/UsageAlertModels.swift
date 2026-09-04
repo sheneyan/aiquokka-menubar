@@ -6,11 +6,7 @@ enum UsageAlertSeverity: Int, Comparable, Sendable {
     case critical = 2
 
     var systemImageName: String {
-        switch self {
-        case .normal: return "gauge.with.dots.needle.67percent"
-        case .warning: return "bell.badge"
-        case .critical: return "bell.badge.fill"
-        }
+        "gauge.with.dots.needle.67percent"
     }
 
     static func < (lhs: UsageAlertSeverity, rhs: UsageAlertSeverity) -> Bool {

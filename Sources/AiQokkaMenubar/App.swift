@@ -87,9 +87,13 @@ private struct MenuBarSummaryView: View {
     }
 
     private var statusColor: Color {
+        if store.snapshot == nil && store.lastError != nil {
+            return .orange
+        }
+
         switch alertCoordinator.highestSeverity {
-        case .normal: return .primary
-        case .warning: return .orange
+        case .normal: return .green
+        case .warning: return .yellow
         case .critical: return .red
         }
     }
