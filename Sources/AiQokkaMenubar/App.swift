@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 @MainActor
@@ -65,8 +66,12 @@ private struct MenuBarSummaryView: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            Image(systemName: statusSymbol)
-                .foregroundStyle(statusColor)
+            if let statusImage {
+                Image(nsImage: statusImage)
+                    .renderingMode(.original)
+            } else {
+                Image(systemName: statusSymbol)
+            }
 
             if store.isRefreshing && store.snapshot == nil {
                 ProgressView()
@@ -86,7 +91,7 @@ private struct MenuBarSummaryView: View {
         return alertCoordinator.highestSeverity.systemImageName
     }
 
-    private var statusColor: Color {
+    private var statusColor: MenuBarStatusColor {
         if store.snapshot == nil && store.lastError != nil {
             return .orange
         }
@@ -96,6 +101,10 @@ private struct MenuBarSummaryView: View {
         case .warning: return .yellow
         case .critical: return .red
         }
+    }
+
+    private var statusImage: NSImage? {
+        MenuBarStatusIcon.image(systemName: statusSymbol, color: statusColor)
     }
 
     private func percentText(_ percent: Double) -> String {
