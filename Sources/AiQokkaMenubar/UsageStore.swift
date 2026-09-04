@@ -3,6 +3,7 @@ import Combine
 
 typealias UsageSnapshotLoader = @Sendable () async throws -> UsageSnapshot
 typealias UsageSleeper = @Sendable (Duration) async throws -> Void
+typealias UsageSnapshotHandler = @MainActor (UsageSnapshot) async -> Void
 
 @MainActor
 final class UsageStore: ObservableObject {
@@ -10,6 +11,7 @@ final class UsageStore: ObservableObject {
 
     private let loader: UsageSnapshotLoader
     private let sleep: UsageSleeper
+    private let didLoadSnapshot: UsageSnapshotHandler?
     private var autoRefreshTask: Task<Void, Never>?
 
     @Published var snapshot: UsageSnapshot?
@@ -21,10 +23,12 @@ final class UsageStore: ObservableObject {
         loader: @escaping UsageSnapshotLoader,
         sleep: @escaping UsageSleeper = { duration in
             try await Task.sleep(for: duration)
-        }
+        },
+        didLoadSnapshot: UsageSnapshotHandler? = nil
     ) {
         self.loader = loader
         self.sleep = sleep
+        self.didLoadSnapshot = didLoadSnapshot
     }
 
     func refresh() async {
@@ -37,6 +41,9 @@ final class UsageStore: ObservableObject {
             let nextSnapshot = try await loader()
             snapshot = nextSnapshot
             lastUpdated = nextSnapshot.fetchedAt
+            if let didLoadSnapshot {
+                await didLoadSnapshot(nextSnapshot)
+            }
         } catch {
             lastError = error.localizedDescription
         }

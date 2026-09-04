@@ -26,6 +26,22 @@ final class UsageStoreTests: XCTestCase {
         XCTAssertNil(store.lastError)
     }
 
+    func testRefreshSuccessInvokesSnapshotCallback() async {
+        let recorder = SnapshotRecorder()
+        let snapshot = UsageSnapshot(providers: [], fetchedAt: Date(timeIntervalSince1970: 123))
+        let store = UsageStore(
+            loader: { snapshot },
+            didLoadSnapshot: { value in
+                await recorder.record(value)
+            }
+        )
+
+        await store.refresh()
+
+        let values = await recorder.values()
+        XCTAssertEqual(values, [snapshot])
+    }
+
     func testFailureKeepsPreviousSnapshotAndReportsError() async {
         let previous = UsageSnapshot(providers: [], fetchedAt: Date(timeIntervalSince1970: 1))
         let loader = ResultLoader(results: [
@@ -51,6 +67,21 @@ final class UsageStoreTests: XCTestCase {
         XCTAssertNil(store.snapshot)
         XCTAssertNotNil(store.lastError)
         XCTAssertFalse(store.isRefreshing)
+    }
+
+    func testRefreshFailureDoesNotInvokeSnapshotCallback() async {
+        let recorder = SnapshotRecorder()
+        let store = UsageStore(
+            loader: { throw StoreTestError.network },
+            didLoadSnapshot: { value in
+                await recorder.record(value)
+            }
+        )
+
+        await store.refresh()
+
+        let values = await recorder.values()
+        XCTAssertTrue(values.isEmpty)
     }
 
     func testOverlappingRefreshesOnlyInvokeLoaderOnce() async {
@@ -118,6 +149,18 @@ private actor ResultLoader {
 
     func next() throws -> UsageSnapshot {
         try results.removeFirst().get()
+    }
+}
+
+private actor SnapshotRecorder {
+    private var recorded: [UsageSnapshot] = []
+
+    func record(_ snapshot: UsageSnapshot) {
+        recorded.append(snapshot)
+    }
+
+    func values() -> [UsageSnapshot] {
+        recorded
     }
 }
 
