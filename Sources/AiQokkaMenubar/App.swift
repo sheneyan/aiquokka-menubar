@@ -5,18 +5,23 @@ import SwiftUI
 struct AiQokkaMenubarApp: App {
     @StateObject private var store: UsageStore
     @StateObject private var displayMode: DisplayModeSettings
+    @StateObject private var alertCoordinator: UsageAlertCoordinator
     private let controller: StandaloneWindowController
 
     init() {
         let runner = UsageCommandRunner()
         let decoder = UsageYAMLDecoder()
+        let alertCoordinator = UsageAlertCoordinator()
         let store = UsageStore(loader: {
             let yaml = try await runner.fetchYAML()
             return try decoder.decode(yaml: yaml)
+        }, didLoadSnapshot: { snapshot in
+            await alertCoordinator.process(snapshot: snapshot)
         })
         let displayMode = DisplayModeSettings()
         _store = StateObject(wrappedValue: store)
         _displayMode = StateObject(wrappedValue: displayMode)
+        _alertCoordinator = StateObject(wrappedValue: alertCoordinator)
         let controller = StandaloneWindowController(store: store, displayMode: displayMode)
         self.controller = controller
         store.startAutoRefresh()
@@ -43,7 +48,7 @@ struct AiQokkaMenubarApp: App {
                 }
             )
         } label: {
-            MenuBarSummaryView(store: store)
+            MenuBarSummaryView(store: store, alertCoordinator: alertCoordinator)
         }
         .menuBarExtraStyle(.window)
     }
@@ -51,12 +56,12 @@ struct AiQokkaMenubarApp: App {
 
 private struct MenuBarSummaryView: View {
     @ObservedObject var store: UsageStore
+    @ObservedObject var alertCoordinator: UsageAlertCoordinator
 
     var body: some View {
         HStack(spacing: 4) {
-            Image(systemName: store.snapshot == nil && store.lastError != nil
-                ? "exclamationmark.triangle"
-                : "gauge.with.dots.needle.67percent")
+            Image(systemName: statusSymbol)
+                .foregroundStyle(statusColor)
 
             if store.isRefreshing && store.snapshot == nil {
                 ProgressView()
@@ -67,6 +72,21 @@ private struct MenuBarSummaryView: View {
             }
         }
         .accessibilityLabel("aiquokka usage")
+    }
+
+    private var statusSymbol: String {
+        if store.snapshot == nil && store.lastError != nil {
+            return "exclamationmark.triangle"
+        }
+        return alertCoordinator.highestSeverity.systemImageName
+    }
+
+    private var statusColor: Color {
+        switch alertCoordinator.highestSeverity {
+        case .normal: return .primary
+        case .warning: return .orange
+        case .critical: return .red
+        }
     }
 
     private func percentText(_ percent: Double) -> String {
