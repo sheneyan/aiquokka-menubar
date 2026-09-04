@@ -12,6 +12,7 @@ internal enum UsageSurface {
 struct UsagePopoverView: View {
     @ObservedObject var store: UsageStore
     @ObservedObject var displayMode: DisplayModeSettings
+    @ObservedObject var alertCoordinator: UsageAlertCoordinator
     let surface: UsageSurface
     let onDisplayModeChanged: (DisplayMode) -> Void
 
@@ -22,6 +23,11 @@ struct UsagePopoverView: View {
             header
 
             Divider()
+
+            if alertCoordinator.notificationAuthorizationState.shouldShowBanner {
+                notificationPermissionSection
+                Divider()
+            }
 
             if let snapshot = store.snapshot {
                 providerList(snapshot)
@@ -46,6 +52,9 @@ struct UsagePopoverView: View {
         .frame(width: 380)
         .fixedSize(horizontal: false, vertical: true)
         .background(.background)
+        .task {
+            await alertCoordinator.refreshAuthorizationState()
+        }
     }
 
     private var header: some View {
@@ -137,6 +146,91 @@ struct UsagePopoverView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
+    }
+
+    @ViewBuilder
+    private var notificationPermissionSection: some View {
+        switch alertCoordinator.notificationAuthorizationState {
+        case .notDetermined:
+            notificationCard(
+                systemImage: "bell.badge",
+                title: "开启用量提醒",
+                message: "点击“开启”后，macOS 会弹出通知授权提示。",
+                actionTitle: "开启",
+                action: requestAuthorization
+            )
+        case .denied:
+            notificationCard(
+                systemImage: "bell.slash",
+                title: "用量提醒未开启",
+                message: "请在系统设置中打开 aiquokka 的“允许通知”。",
+                actionTitle: "打开系统设置",
+                action: openNotificationSettings
+            )
+        case .unavailable(let detail):
+            notificationCard(
+                systemImage: "exclamationmark.triangle",
+                title: "通知暂不可用",
+                message: detail.isEmpty ? "macOS 没有接受这个 App 的通知请求。" : detail,
+                actionTitle: "打开系统设置",
+                action: openNotificationSettings
+            )
+        case .unknown, .authorized:
+            EmptyView()
+        }
+    }
+
+    private func notificationCard(
+        systemImage: String,
+        title: String,
+        message: String,
+        actionTitle: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.title3)
+                .foregroundStyle(.orange)
+                .frame(width: 22)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(3)
+                    .textSelection(.enabled)
+            }
+
+            Spacer(minLength: 8)
+
+            if alertCoordinator.isRequestingAuthorization {
+                ProgressView()
+                    .controlSize(.small)
+            } else {
+                Button(actionTitle, action: action)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+            }
+        }
+        .padding(12)
+        .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 10))
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+    }
+
+    private func requestAuthorization() {
+        Task {
+            await alertCoordinator.requestAuthorization()
+        }
+    }
+
+    private func openNotificationSettings() {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension") else {
+            return
+        }
+        NSWorkspace.shared.open(url)
     }
 
     private func emptyState(systemImage: String, title: String, message: String) -> some View {

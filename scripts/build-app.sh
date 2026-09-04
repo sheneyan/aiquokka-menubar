@@ -22,4 +22,15 @@ plutil -replace CFBundleExecutable -string "$binary_name" "$app_bundle/Contents/
 plutil -replace CFBundlePackageType -string "APPL" "$app_bundle/Contents/Info.plist"
 plutil -replace CFBundleVersion -string "1" "$app_bundle/Contents/Info.plist"
 
-echo "Built $app_bundle"
+signing_identity="${SIGNING_IDENTITY:-}"
+if [[ -z "$signing_identity" ]]; then
+    signing_identity="$(security find-identity -v -p codesigning 2>/dev/null | awk -F '"' '/Apple Development:/ { print $2; exit }')"
+fi
+
+if [[ -n "$signing_identity" ]]; then
+    codesign --force --deep --timestamp=none --sign "$signing_identity" "$app_bundle"
+    echo "Built and signed $app_bundle ($signing_identity)"
+else
+    codesign --force --deep --timestamp=none --sign - "$app_bundle"
+    echo "Built $app_bundle (ad-hoc signature; notifications may require a locally signed build)"
+fi

@@ -6,9 +6,10 @@ final class UsageAlertCoordinator: ObservableObject {
     private let evaluator: UsageAlertEvaluator
     private let stateStore: UsageAlertStateStore
     private let notificationClient: any UsageNotificationClient
-    private var authorizationRequested = false
 
     @Published private(set) var highestSeverity: UsageAlertSeverity = .normal
+    @Published private(set) var notificationAuthorizationState: UsageNotificationAuthorizationState = .unknown
+    @Published private(set) var isRequestingAuthorization = false
 
     init(
         evaluator: UsageAlertEvaluator = UsageAlertEvaluator(),
@@ -28,15 +29,28 @@ final class UsageAlertCoordinator: ObservableObject {
             stateStore.reconcile(window)
         }
 
-        if !authorizationRequested {
-            authorizationRequested = true
-            await notificationClient.requestAuthorization()
-        }
-
         for alert in evaluation.alerts where !stateStore.hasSent(alert) {
             if await notificationClient.send(alert) {
                 stateStore.markSent(alert)
             }
         }
+    }
+
+    func refreshAuthorizationState() async {
+        notificationAuthorizationState = await notificationClient.authorizationState()
+    }
+
+    @discardableResult
+    func requestAuthorization() async -> UsageNotificationAuthorizationState {
+        guard !isRequestingAuthorization else {
+            return notificationAuthorizationState
+        }
+
+        isRequestingAuthorization = true
+        defer { isRequestingAuthorization = false }
+
+        let state = await notificationClient.requestAuthorization()
+        notificationAuthorizationState = state
+        return state
     }
 }

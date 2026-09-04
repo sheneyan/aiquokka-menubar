@@ -8,14 +8,20 @@ final class StandaloneWindowController: NSObject, NSWindowDelegate {
 
     private let store: UsageStore
     private let displayMode: DisplayModeSettings
+    private let alertCoordinator: UsageAlertCoordinator
     private var closingForModeChange = false
     private var terminating = false
 
     private(set) var window: NSWindow?
 
-    init(store: UsageStore, displayMode: DisplayModeSettings) {
+    init(
+        store: UsageStore,
+        displayMode: DisplayModeSettings,
+        alertCoordinator: UsageAlertCoordinator
+    ) {
         self.store = store
         self.displayMode = displayMode
+        self.alertCoordinator = alertCoordinator
         super.init()
 
         NotificationCenter.default.addObserver(
@@ -40,6 +46,7 @@ final class StandaloneWindowController: NSObject, NSWindowDelegate {
         let hostedView = UsagePopoverView(
             store: store,
             displayMode: displayMode,
+            alertCoordinator: alertCoordinator,
             surface: .standaloneWindow,
             onDisplayModeChanged: { [weak self] mode in
                 if mode == .standaloneWindow {

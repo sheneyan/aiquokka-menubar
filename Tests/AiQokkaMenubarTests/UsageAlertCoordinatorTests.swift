@@ -6,13 +6,13 @@ import XCTest
 final class UsageAlertCoordinatorTests: XCTestCase {
     private let now = Date(timeIntervalSince1970: 1_000_000)
 
-    func testFirstSuccessfulEvaluationRequestsAuthorizationAndSendsNearLimit() async throws {
+    func testFirstSuccessfulEvaluationSendsNearLimitWithoutRequestingAuthorization() async throws {
         let client = RecordingUsageNotificationClient()
         let coordinator = makeCoordinator(client: client)
 
         await coordinator.process(snapshot: snapshot(usedPercent: 80), now: now)
 
-        XCTAssertEqual(client.authorizationRequestCount, 1)
+        XCTAssertEqual(client.authorizationRequestCount, 0)
         XCTAssertEqual(client.sentAlerts.map(\.kind), [.nearingLimit])
         XCTAssertEqual(coordinator.highestSeverity, .warning)
     }
@@ -26,7 +26,7 @@ final class UsageAlertCoordinatorTests: XCTestCase {
         await coordinator.process(snapshot: current, now: now.addingTimeInterval(60))
 
         XCTAssertEqual(client.sentAlerts.count, 1)
-        XCTAssertEqual(client.authorizationRequestCount, 1)
+        XCTAssertEqual(client.authorizationRequestCount, 0)
     }
 
     func testCriticalEscalationSendsASecondAlert() async throws {
@@ -63,14 +63,26 @@ final class UsageAlertCoordinatorTests: XCTestCase {
         XCTAssertEqual(client.sentAlerts.map(\.kind), [.nearingLimit])
     }
 
-    func testAuthorizationIsRequestedOnlyOnceAcrossRefreshes() async {
-        let client = RecordingUsageNotificationClient()
+    func testRefreshingAuthorizationStateDoesNotRequestPermission() async {
+        let client = RecordingUsageNotificationClient(currentAuthorizationState: .notDetermined)
         let coordinator = makeCoordinator(client: client)
 
-        await coordinator.process(snapshot: snapshot(usedPercent: 10), now: now)
-        await coordinator.process(snapshot: snapshot(usedPercent: 10), now: now.addingTimeInterval(60))
+        await coordinator.refreshAuthorizationState()
+
+        XCTAssertEqual(client.authorizationRequestCount, 0)
+        XCTAssertEqual(client.authorizationStateReadCount, 1)
+        XCTAssertEqual(coordinator.notificationAuthorizationState, .notDetermined)
+    }
+
+    func testExplicitAuthorizationRequestUpdatesPublishedState() async {
+        let client = RecordingUsageNotificationClient(currentAuthorizationState: .authorized)
+        let coordinator = makeCoordinator(client: client)
+
+        let state = await coordinator.requestAuthorization()
 
         XCTAssertEqual(client.authorizationRequestCount, 1)
+        XCTAssertEqual(state, .authorized)
+        XCTAssertEqual(coordinator.notificationAuthorizationState, .authorized)
     }
 
     private func makeCoordinator(client: RecordingUsageNotificationClient) -> UsageAlertCoordinator {
@@ -109,15 +121,27 @@ final class UsageAlertCoordinatorTests: XCTestCase {
 @MainActor
 private final class RecordingUsageNotificationClient: UsageNotificationClient {
     private(set) var authorizationRequestCount = 0
+    private(set) var authorizationStateReadCount = 0
     private(set) var sentAlerts: [UsageAlert] = []
     private var sendResults: [Bool]
+    private let currentAuthorizationState: UsageNotificationAuthorizationState
 
-    init(sendResults: [Bool] = []) {
+    init(
+        sendResults: [Bool] = [],
+        currentAuthorizationState: UsageNotificationAuthorizationState = .authorized
+    ) {
         self.sendResults = sendResults
+        self.currentAuthorizationState = currentAuthorizationState
     }
 
-    func requestAuthorization() async {
+    func authorizationState() async -> UsageNotificationAuthorizationState {
+        authorizationStateReadCount += 1
+        return currentAuthorizationState
+    }
+
+    func requestAuthorization() async -> UsageNotificationAuthorizationState {
         authorizationRequestCount += 1
+        return currentAuthorizationState
     }
 
     func send(_ alert: UsageAlert) async -> Bool {

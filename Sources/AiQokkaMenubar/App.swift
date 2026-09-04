@@ -22,7 +22,11 @@ struct AiQokkaMenubarApp: App {
         _store = StateObject(wrappedValue: store)
         _displayMode = StateObject(wrappedValue: displayMode)
         _alertCoordinator = StateObject(wrappedValue: alertCoordinator)
-        let controller = StandaloneWindowController(store: store, displayMode: displayMode)
+        let controller = StandaloneWindowController(
+            store: store,
+            displayMode: displayMode,
+            alertCoordinator: alertCoordinator
+        )
         self.controller = controller
         store.startAutoRefresh()
 
@@ -38,6 +42,7 @@ struct AiQokkaMenubarApp: App {
             UsagePopoverView(
                 store: store,
                 displayMode: displayMode,
+                alertCoordinator: alertCoordinator,
                 surface: .menuBar,
                 onDisplayModeChanged: { mode in
                     if mode == .standaloneWindow {
