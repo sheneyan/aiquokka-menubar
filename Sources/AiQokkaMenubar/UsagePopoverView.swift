@@ -187,37 +187,14 @@ struct UsagePopoverView: View {
         actionTitle: String,
         action: @escaping () -> Void
     ) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: systemImage)
-                .font(.title3)
-                .foregroundStyle(.orange)
-                .frame(width: 22)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-                Text(message)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(3)
-                    .textSelection(.enabled)
-            }
-
-            Spacer(minLength: 8)
-
-            if alertCoordinator.isRequestingAuthorization {
-                ProgressView()
-                    .controlSize(.small)
-            } else {
-                Button(actionTitle, action: action)
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-            }
-        }
-        .padding(12)
-        .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 10))
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        UsageNotificationCard(
+            systemImage: systemImage,
+            title: title,
+            message: message,
+            actionTitle: actionTitle,
+            isRequesting: alertCoordinator.isRequestingAuthorization,
+            action: action
+        )
     }
 
     private func requestAuthorization() {
@@ -275,6 +252,51 @@ struct UsagePopoverView: View {
 
     private func dateText(_ date: Date) -> String {
         DateFormatter.localizedString(from: date, dateStyle: .short, timeStyle: .short)
+    }
+}
+
+struct UsageNotificationCard: View {
+    let systemImage: String
+    let title: String
+    let message: String
+    let actionTitle: String
+    let isRequesting: Bool
+    let action: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.title3)
+                .foregroundStyle(.orange)
+                .frame(width: 22)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .textSelection(.enabled)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .layoutPriority(1)
+
+            if isRequesting {
+                ProgressView()
+                    .controlSize(.small)
+            } else {
+                Button(actionTitle, action: action)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 10))
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
     }
 }
 
