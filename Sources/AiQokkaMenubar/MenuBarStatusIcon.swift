@@ -1,5 +1,31 @@
 import AppKit
 
+struct MenuBarStatusPresentation: Equatable, Sendable {
+    let color: MenuBarStatusColor
+    let symbolName: String
+
+    init(
+        snapshot: UsageSnapshot?,
+        lastError: String?,
+        severity: UsageAlertSeverity
+    ) {
+        symbolName = "gauge.with.dots.needle.67percent"
+
+        if lastError != nil || snapshot?.providers.contains(where: { $0.error != nil }) == true {
+            color = .red
+        } else {
+            switch severity {
+            case .normal:
+                color = .green
+            case .warning:
+                color = .yellow
+            case .critical:
+                color = .red
+            }
+        }
+    }
+}
+
 enum MenuBarStatusColor: Equatable, Sendable {
     case green
     case yellow

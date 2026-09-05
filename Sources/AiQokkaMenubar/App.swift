@@ -85,22 +85,19 @@ private struct MenuBarSummaryView: View {
     }
 
     private var statusSymbol: String {
-        if store.snapshot == nil && store.lastError != nil {
-            return "exclamationmark.triangle"
-        }
-        return alertCoordinator.highestSeverity.systemImageName
+        statusPresentation.symbolName
     }
 
     private var statusColor: MenuBarStatusColor {
-        if store.snapshot == nil && store.lastError != nil {
-            return .orange
-        }
+        statusPresentation.color
+    }
 
-        switch alertCoordinator.highestSeverity {
-        case .normal: return .green
-        case .warning: return .yellow
-        case .critical: return .red
-        }
+    private var statusPresentation: MenuBarStatusPresentation {
+        MenuBarStatusPresentation(
+            snapshot: store.snapshot,
+            lastError: store.lastError,
+            severity: alertCoordinator.highestSeverity
+        )
     }
 
     private var statusImage: NSImage? {
