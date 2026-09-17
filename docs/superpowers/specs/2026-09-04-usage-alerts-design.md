@@ -14,7 +14,8 @@
   - **快用完**：实际使用率达到 80%。
   - **即将耗尽**：实际使用率达到 95%。
 - 同一 provider、同一窗口、同一提醒级别只通知一次。窗口恢复到阈值以下，或 provider 返回了新的 reset 时间后，该级别重新具备提醒资格。
-- ntfy 用量里程碑按每个 provider、每个 usage window 单独判断：使用率达到 10%、20%……100% 的档位时，向 ntfy 发送一次当前档位通知；如果一次刷新直接跨过多个档位，只发送当前最高档位，避免 App 暂停后恢复时产生通知风暴。
+- ntfy 用量里程碑按每个 provider、每个 usage window 单独判断：默认使用率达到 10%、20%……100% 的档位时，向 ntfy 发送一次当前档位通知；详情页可以把提醒间隔配置为 1%–50%，例如设为 5% 后按 5%、10%……85% 触发。如果一次刷新直接跨过多个档位，只发送当前最高档位，避免 App 暂停后恢复时产生通知风暴。
+- 修改提醒间隔时，以当前使用率对应的档位建立新间隔的去重基线，不补发已经错过的档位；例如从 10% 改为 5% 且当前为 81% 时，不补发 80%，之后达到 85% 才发送提醒。
 - ntfy 默认关闭。详情页的“ntfy 用量提醒”设置可以开启，并配置 `agent-notify` 可执行文件和受保护的配置文件路径；服务 URL、topic、publish-only token 仍由该配置文件管理，App 不保存 token。
 - 如果 gateway 可执行文件位于 macOS 受保护的“文稿”目录，首次启用并检查该路径时系统可能要求授予 aiquokka 访问权限；关闭 ntfy 时 App 不主动探测该目录。
 - 使用率从 80% 进入 95% 时，分别允许发送一次“快用完”和一次“即将耗尽”通知；同一状态的后续刷新不重复发送。
@@ -46,7 +47,7 @@
 - `UsageAlertStateStore`：使用 `UserDefaults` 保存已经通知过的状态。键包含 provider、window、提醒级别和 reset 身份；不保存 API key、原始 YAML 或完整快照。
 - `UsageNotificationClient`：封装 `UNUserNotificationCenter` 的当前权限查询、显式授权请求和本地通知发送。生产实现把未请求、已授权、已拒绝和系统不可用状态反馈给界面，测试使用内存实现验证授权和发送事件。
 - `UsageAlertCoordinator`：串联 evaluator、state store 和 notification client。只接收成功刷新后的最新快照，过滤重复事件，更新当前提醒级别，并发送新通知。
-- `UsageMilestoneEvaluator` / `UsageMilestoneStateStore`：将每个 usage window 的使用率换算为 10% 档位，并按 provider、window、reset 身份持久化已发送的最高档位；不保存原始 YAML 或凭据。
+- `UsageMilestoneEvaluator` / `UsageMilestoneStateStore`：将每个 usage window 的使用率换算为可配置间隔（默认 10%，允许 1%–50%）的档位，并按 provider、window、reset 身份和当前间隔持久化已发送的最高档位；间隔变化时建立当前使用率基线，不保存原始 YAML 或凭据。
 - `UsageMilestoneCoordinator` / `AgentNotifyCommandRunner`：只在 ntfy 配置启用且路径完整时调用 `agent-notify send --event health`，通过 `AGENT_NOTIFY_CONFIG` 指向受保护配置文件；沿用 `ProcessCommandExecutor` 的系统 HTTP/HTTPS 代理发现。
 - `UsageStore`：保留现有刷新和错误处理职责；每次成功载入新快照后通知 coordinator。刷新失败时不基于旧快照发送新通知，也不清除已有提醒状态。
 - `AiQokkaMenubarApp` / `MenuBarSummaryView`：创建并共享 coordinator，把当前最高提醒级别传给菜单栏摘要；菜单栏详情页和独立窗口继续共享原有 `UsageStore` 与 coordinator，并在可见界面提供授权入口。
@@ -70,7 +71,7 @@ UsageStore 成功刷新
 - reset 时间改变时，视为新的额度窗口：旧窗口的提醒状态失效，新窗口从正常状态重新评估。
 - 当当前使用率降回相应阈值以下时，清除该提醒级别的已发送标记。对正常的 rolling window，reset 时间变化通常是主要的重新武装条件。
 - 如果通知权限未授予、系统通知发送失败或通知客户端返回错误，仍更新菜单栏派生状态，但不把未发送事件标记为已发送，避免权限后来恢复后永远错过提醒。
-- ntfy 里程碑只在 gateway 返回成功后记录为已发送；相同档位的后续刷新和 App 重启不重复发送。reset 身份改变后重新从 10% 档位开始。
+- ntfy 里程碑只在 gateway 返回成功后记录为已发送；相同档位的后续刷新和 App 重启不重复发送。reset 身份改变后按当前配置重新评估；提醒间隔变化时不补发旧间隔下已经错过的档位。
 - provider 返回错误或整次 YAML 解析失败时，保留现有快照和提醒状态，不将错误误判为 0% 或 100%。
 
 ## 通知文案与菜单栏状态
@@ -115,6 +116,7 @@ UsageStore 成功刷新
 - 通知权限拒绝或发送失败时，菜单栏提醒状态仍正确，事件不会被错误标记为已发送。
 - 长通知权限说明在固定宽度的 SwiftUI 容器中会换行并增加内容高度，不横向溢出或覆盖操作按钮。
 - 使用率 9.99%、10%、40.1% 和非法/provider 错误数据分别覆盖“不通知”、边界档位、取当前最高档位和忽略错误。
+- 默认 10% 间隔、5% 自定义间隔、设置持久化和非法间隔回退默认值；从 10% 改为 5% 时，81% 不补发 80%，达到 85% 后正常发送。
 - ntfy CLI 参数包含 provider/window/plan/使用率/reset 信息，配置路径通过 `AGENT_NOTIFY_CONFIG` 传递，非零退出可重试且不标记为成功。
 
 ### 工程验证

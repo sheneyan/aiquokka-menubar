@@ -35,7 +35,13 @@ struct UsageQuotaMilestone: Equatable, Hashable, Identifiable, Sendable {
 }
 
 struct UsageMilestoneEvaluator: Sendable {
-    static let stepPercent = 10
+    static let defaultStepPercent = UsageNtfyConfiguration.defaultMilestoneStepPercent
+
+    let stepPercent: Int
+
+    init(stepPercent: Int = Self.defaultStepPercent) {
+        self.stepPercent = UsageNtfyConfiguration.normalizedMilestoneStep(stepPercent)
+    }
 
     func evaluate(snapshot: UsageSnapshot) -> [UsageQuotaMilestone] {
         snapshot.providers.flatMap { provider -> [UsageQuotaMilestone] in
@@ -48,8 +54,8 @@ struct UsageMilestoneEvaluator: Sendable {
                     return nil
                 }
 
-                let milestonePercent = Int(floor(usedPercent / Double(Self.stepPercent))) * Self.stepPercent
-                guard milestonePercent >= Self.stepPercent else { return nil }
+                let milestonePercent = Int(floor(usedPercent / Double(stepPercent))) * stepPercent
+                guard milestonePercent >= stepPercent else { return nil }
 
                 return UsageQuotaMilestone(
                     providerID: provider.id,
@@ -68,14 +74,17 @@ struct UsageMilestoneEvaluator: Sendable {
 @MainActor
 final class UsageMilestoneStateStore {
     static let userDefaultsKey = "aiquokka.usageMilestone.sentStates"
+    static let lastStepPercentKey = "aiquokka.usageMilestone.lastStepPercent"
 
     private struct StoredState: Codable {
         var resetDate: Date?
         var highestMilestone: Int
+        var stepPercent: Int?
     }
 
     private let userDefaults: UserDefaults
     private var states: [String: StoredState]
+    private var lastConfiguredStep: Int?
 
     init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
@@ -85,15 +94,71 @@ final class UsageMilestoneStateStore {
         } else {
             self.states = [:]
         }
+        if let storedStep = (userDefaults.object(forKey: Self.lastStepPercentKey) as? NSNumber)?.intValue {
+            self.lastConfiguredStep = UsageNtfyConfiguration.normalizedMilestoneStep(storedStep)
+        } else {
+            self.lastConfiguredStep = nil
+        }
     }
 
     func highestSent(for milestone: UsageQuotaMilestone) -> Int {
         states[stateKey(for: milestone)]?.highestMilestone ?? 0
     }
 
+    func updateStepPercent(_ stepPercent: Int) -> Bool {
+        let normalizedStep = UsageNtfyConfiguration.normalizedMilestoneStep(stepPercent)
+        let previousStep = lastConfiguredStep ?? UsageMilestoneEvaluator.defaultStepPercent
+        let didChange = previousStep != normalizedStep
+
+        if lastConfiguredStep != normalizedStep {
+            lastConfiguredStep = normalizedStep
+            userDefaults.set(normalizedStep, forKey: Self.lastStepPercentKey)
+        }
+
+        return didChange
+    }
+
+    func prepare(_ milestone: UsageQuotaMilestone, stepPercent: Int, stepDidChange: Bool = false) {
+        let key = stateKey(for: milestone)
+        let normalizedStep = UsageNtfyConfiguration.normalizedMilestoneStep(stepPercent)
+
+        guard var current = states[key] else {
+            states[key] = StoredState(
+                resetDate: milestone.resetDate,
+                highestMilestone: stepDidChange ? milestone.milestonePercent : 0,
+                stepPercent: normalizedStep
+            )
+            persist()
+            return
+        }
+
+        let previousStep = current.stepPercent ?? UsageMilestoneEvaluator.defaultStepPercent
+        if !stepDidChange && previousStep == normalizedStep {
+            guard current.stepPercent == nil else { return }
+            current.stepPercent = normalizedStep
+            states[key] = current
+            persist()
+            return
+        }
+
+        // Changing the interval establishes a new baseline at the current
+        // usage level. This avoids backfilling a milestone the user already
+        // passed before changing the setting.
+        states[key] = StoredState(
+            resetDate: milestone.resetDate,
+            highestMilestone: milestone.milestonePercent,
+            stepPercent: normalizedStep
+        )
+        persist()
+    }
+
     func markSent(_ milestone: UsageQuotaMilestone) {
         let key = stateKey(for: milestone)
-        var state = states[key] ?? StoredState(resetDate: milestone.resetDate, highestMilestone: 0)
+        var state = states[key] ?? StoredState(
+            resetDate: milestone.resetDate,
+            highestMilestone: 0,
+            stepPercent: nil
+        )
         state.highestMilestone = max(state.highestMilestone, milestone.milestonePercent)
         states[key] = state
         persist()
@@ -120,18 +185,15 @@ protocol UsageMilestoneNotificationClient: AnyObject {
 
 @MainActor
 final class UsageMilestoneCoordinator {
-    private let evaluator: UsageMilestoneEvaluator
     private let stateStore: UsageMilestoneStateStore
     private let notificationClient: any UsageMilestoneNotificationClient
     private let configurationProvider: @MainActor () -> UsageNtfyConfiguration
 
     init(
-        evaluator: UsageMilestoneEvaluator = UsageMilestoneEvaluator(),
         stateStore: UsageMilestoneStateStore = UsageMilestoneStateStore(),
         notificationClient: any UsageMilestoneNotificationClient = AgentNotifyUsageMilestoneNotificationClient(),
         configurationProvider: @escaping @MainActor () -> UsageNtfyConfiguration = { .disabled }
     ) {
-        self.evaluator = evaluator
         self.stateStore = stateStore
         self.notificationClient = notificationClient
         self.configurationProvider = configurationProvider
@@ -141,7 +203,14 @@ final class UsageMilestoneCoordinator {
         let configuration = configurationProvider()
         guard configuration.isConfigured else { return }
 
+        let stepDidChange = stateStore.updateStepPercent(configuration.milestoneStepPercent)
+        let evaluator = UsageMilestoneEvaluator(stepPercent: configuration.milestoneStepPercent)
         for milestone in evaluator.evaluate(snapshot: snapshot) {
+            stateStore.prepare(
+                milestone,
+                stepPercent: configuration.milestoneStepPercent,
+                stepDidChange: stepDidChange
+            )
             guard stateStore.highestSent(for: milestone) < milestone.milestonePercent else {
                 continue
             }

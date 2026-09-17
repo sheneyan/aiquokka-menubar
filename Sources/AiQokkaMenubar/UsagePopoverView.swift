@@ -157,6 +157,18 @@ struct UsagePopoverView: View {
             VStack(alignment: .leading, spacing: 9) {
                 Toggle("启用 ntfy 用量提醒", isOn: $ntfySettings.isEnabled)
 
+                Stepper(
+                    "每 \(ntfySettings.milestoneStepPercent)% 用量提醒",
+                    value: $ntfySettings.milestoneStepPercent,
+                    in: UsageNtfyConfiguration.milestoneStepRange
+                )
+                .font(.caption)
+
+                Text("默认每 10%；修改间隔不会补发已经错过的档位。")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
                 pathField(
                     label: "可执行文件",
                     placeholder: "/绝对路径/agent-notify",

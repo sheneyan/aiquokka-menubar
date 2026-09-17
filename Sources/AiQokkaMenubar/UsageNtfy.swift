@@ -2,14 +2,28 @@ import Combine
 import Foundation
 
 struct UsageNtfyConfiguration: Equatable, Sendable {
+    static let defaultMilestoneStepPercent = 10
+    static let milestoneStepRange = 1...50
+
     let isEnabled: Bool
     let executablePath: String
     let configPath: String
+    let milestoneStepPercent: Int
 
-    init(isEnabled: Bool, executablePath: String, configPath: String) {
+    init(
+        isEnabled: Bool,
+        executablePath: String,
+        configPath: String,
+        milestoneStepPercent: Int = Self.defaultMilestoneStepPercent
+    ) {
         self.isEnabled = isEnabled
         self.executablePath = executablePath.trimmingCharacters(in: .whitespacesAndNewlines)
         self.configPath = configPath.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.milestoneStepPercent = Self.normalizedMilestoneStep(milestoneStepPercent)
+    }
+
+    static func normalizedMilestoneStep(_ value: Int) -> Int {
+        milestoneStepRange.contains(value) ? value : defaultMilestoneStepPercent
     }
 
     var isConfigured: Bool {
@@ -35,6 +49,7 @@ final class UsageNtfySettings: ObservableObject {
     static let enabledKey = "aiquokka.ntfy.enabled"
     static let executablePathKey = "aiquokka.ntfy.agentNotifyExecutablePath"
     static let configPathKey = "aiquokka.ntfy.agentNotifyConfigPath"
+    static let milestoneStepPercentKey = "aiquokka.ntfy.milestoneStepPercent"
 
     @Published var isEnabled: Bool {
         didSet { userDefaults.set(isEnabled, forKey: Self.enabledKey) }
@@ -46,6 +61,17 @@ final class UsageNtfySettings: ObservableObject {
 
     @Published var agentNotifyConfigPath: String {
         didSet { userDefaults.set(agentNotifyConfigPath, forKey: Self.configPathKey) }
+    }
+
+    @Published var milestoneStepPercent: Int {
+        didSet {
+            let normalized = UsageNtfyConfiguration.normalizedMilestoneStep(milestoneStepPercent)
+            if normalized != milestoneStepPercent {
+                milestoneStepPercent = normalized
+            } else {
+                userDefaults.set(normalized, forKey: Self.milestoneStepPercentKey)
+            }
+        }
     }
 
     private let userDefaults: UserDefaults
@@ -63,13 +89,17 @@ final class UsageNtfySettings: ObservableObject {
             ?? Self.defaultExecutablePath(homeDirectory: homeDirectory, fileManager: fileManager)
         self.agentNotifyConfigPath = userDefaults.string(forKey: Self.configPathKey)
             ?? homeDirectory.appendingPathComponent(".config/agent-notify/agent-notify.env").path
+        let storedStep = (userDefaults.object(forKey: Self.milestoneStepPercentKey) as? NSNumber)?.intValue
+            ?? UsageNtfyConfiguration.defaultMilestoneStepPercent
+        self.milestoneStepPercent = UsageNtfyConfiguration.normalizedMilestoneStep(storedStep)
     }
 
     var configuration: UsageNtfyConfiguration {
         UsageNtfyConfiguration(
             isEnabled: isEnabled,
             executablePath: agentNotifyExecutablePath,
-            configPath: agentNotifyConfigPath
+            configPath: agentNotifyConfigPath,
+            milestoneStepPercent: milestoneStepPercent
         )
     }
 
@@ -94,7 +124,7 @@ final class UsageNtfySettings: ObservableObject {
             return "ntfy 配置文件权限必须为 0600，请先执行 chmod 600。"
         }
 
-        return "已启用；达到新的 10% 用量档位时发送一次。"
+        return "已启用；达到新的 \(milestoneStepPercent)% 用量档位时发送一次。"
     }
 
     static func defaultExecutablePath(

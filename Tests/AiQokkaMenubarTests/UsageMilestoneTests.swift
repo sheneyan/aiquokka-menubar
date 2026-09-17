@@ -27,6 +27,19 @@ final class UsageMilestoneEvaluatorTests: XCTestCase {
         )
     }
 
+    func testUsesConfiguredMilestoneStep() {
+        let fivePercentEvaluator = UsageMilestoneEvaluator(stepPercent: 5)
+
+        XCTAssertEqual(
+            fivePercentEvaluator.evaluate(snapshot: snapshot(usedPercent: 84.99)).map(\.milestonePercent),
+            [80]
+        )
+        XCTAssertEqual(
+            fivePercentEvaluator.evaluate(snapshot: snapshot(usedPercent: 85)).map(\.milestonePercent),
+            [85]
+        )
+    }
+
     func testInvalidUsageAndProviderErrorsAreIgnored() {
         let invalid = snapshot(usedPercent: 101)
         let failedProvider = UsageSnapshot(
@@ -151,6 +164,52 @@ final class UsageMilestoneCoordinatorTests: XCTestCase {
         await coordinator.process(snapshot: snapshot(usedPercent: 50))
 
         XCTAssertTrue(client.sentMilestones.isEmpty)
+    }
+
+    func testChangingStepDoesNotBackfillAlreadyPassedMilestone() async {
+        let defaults = makeDefaults()
+        let firstClient = RecordingUsageMilestoneNotificationClient()
+        let first = makeCoordinator(client: firstClient, defaults: defaults)
+
+        await first.process(snapshot: snapshot(usedPercent: 79))
+        XCTAssertEqual(firstClient.sentMilestones.map(\.milestonePercent), [70])
+
+        let secondClient = RecordingUsageMilestoneNotificationClient()
+        let second = makeCoordinator(
+            client: secondClient,
+            defaults: defaults,
+            configuration: UsageNtfyConfiguration(
+                isEnabled: true,
+                executablePath: "/bin/agent-notify",
+                configPath: "/tmp/agent-notify.env",
+                milestoneStepPercent: 5
+            )
+        )
+
+        await second.process(snapshot: snapshot(usedPercent: 81))
+        XCTAssertTrue(secondClient.sentMilestones.isEmpty)
+
+        await second.process(snapshot: snapshot(usedPercent: 85))
+        XCTAssertEqual(secondClient.sentMilestones.map(\.milestonePercent), [85])
+    }
+
+    func testChangingStepWithoutExistingStateStartsAtNextConfiguredMilestone() async {
+        let client = RecordingUsageMilestoneNotificationClient()
+        let coordinator = makeCoordinator(
+            client: client,
+            configuration: UsageNtfyConfiguration(
+                isEnabled: true,
+                executablePath: "/bin/agent-notify",
+                configPath: "/tmp/agent-notify.env",
+                milestoneStepPercent: 5
+            )
+        )
+
+        await coordinator.process(snapshot: snapshot(usedPercent: 81))
+        XCTAssertTrue(client.sentMilestones.isEmpty)
+
+        await coordinator.process(snapshot: snapshot(usedPercent: 85))
+        XCTAssertEqual(client.sentMilestones.map(\.milestonePercent), [85])
     }
 
     private func makeCoordinator(

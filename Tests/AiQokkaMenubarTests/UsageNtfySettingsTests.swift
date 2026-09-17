@@ -18,17 +18,30 @@ final class UsageNtfySettingsTests: XCTestCase {
         first.isEnabled = true
         first.agentNotifyExecutablePath = "/custom/bin/agent-notify"
         first.agentNotifyConfigPath = "/custom/agent-notify.env"
+        first.milestoneStepPercent = 5
 
         let second = UsageNtfySettings(userDefaults: defaults)
 
         XCTAssertTrue(second.isEnabled)
         XCTAssertEqual(second.agentNotifyExecutablePath, "/custom/bin/agent-notify")
         XCTAssertEqual(second.agentNotifyConfigPath, "/custom/agent-notify.env")
+        XCTAssertEqual(second.milestoneStepPercent, 5)
         XCTAssertEqual(second.configuration, UsageNtfyConfiguration(
             isEnabled: true,
             executablePath: "/custom/bin/agent-notify",
-            configPath: "/custom/agent-notify.env"
+            configPath: "/custom/agent-notify.env",
+            milestoneStepPercent: 5
         ))
+    }
+
+    func testInvalidMilestoneStepFallsBackToDefault() {
+        let defaults = makeDefaults()
+        defaults.set(0, forKey: UsageNtfySettings.milestoneStepPercentKey)
+
+        let settings = UsageNtfySettings(userDefaults: defaults)
+
+        XCTAssertEqual(settings.milestoneStepPercent, 10)
+        XCTAssertEqual(settings.configuration.milestoneStepPercent, 10)
     }
 
     func testEmptyPathsAreNotReadyToSend() {
