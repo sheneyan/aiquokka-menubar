@@ -10,14 +10,15 @@
 
 ---
 
-## 实施状态（2026-09-05）
+## 实施状态（2026-09-17）
 
 本计划的用量提醒功能已经落地到 `main`。后续修复记录如下：
 
 - `bbd6a66`：通知授权改为显式用户操作；详情界面显示权限状态和“开启/打开系统设置”入口；构建脚本优先使用本机 Apple Development 签名。
 - `c218a49`：通知权限卡片的长说明限制在剩余宽度内完整自动换行，卡片和独立窗口保持内容自适应高度；新增 `UsageNotificationCardLayoutTests`。
 - 当前增量：菜单栏改用三色仪表盘状态图标；内容区进度条按剩余额度独立使用绿/黄/红，不受“消耗过快”提醒影响；整次刷新失败或任一 provider 读取失败时，菜单栏优先显示红色仪表盘。
-- 当前验证：`swift test` 50/50 通过；`dist/aiquokka.app` 构建成功，`codesign --verify --deep --strict` 通过。
+- 当前增量：可选 ntfy 用量里程碑提醒已接入本机 `agent-notify` CLI。每个 provider/window 在使用率达到新的 10% 档位时发送当前最高档位，状态按 reset 身份持久化去重；设置界面可配置开关、CLI 路径和 gateway 配置文件路径。
+- 当前验证：本次增量新增 17 个测试；完整 `swift test` 通过（67/67）。使用 `SIGNING_IDENTITY=- scripts/build-app.sh` 构建并完成 ad-hoc 签名，`dist/aiquokka.app` 和 `/Applications/aiquokka.app` 均通过 `codesign --verify --deep --strict`；本机 Apple Development 身份签名仍返回 macOS `errSecInternalComponent`。
 - 真实 macOS 的最后一步仍需在已解锁桌面上手动点击“开启”，确认系统授权弹窗；自动化 UI 验证不替代该人工授权步骤。
 
 Task 3 中关于“首次成功快照自动请求授权”的早期示例已被本节记录的显式授权行为取代；实现以当前源码为准。
@@ -35,6 +36,11 @@ Task 3 中关于“首次成功快照自动请求授权”的早期示例已被�
 - Create `Tests/AiQokkaMenubarTests/UsageAlertStateStoreTests.swift`: isolated `UserDefaults` tests for persistence, rearming, reset identity, and data boundaries.
 - Create `Tests/AiQokkaMenubarTests/UsageAlertCoordinatorTests.swift`: fake notification-client tests for authorization, deduplication, escalation, and retry behavior.
 - Create `Tests/AiQokkaMenubarTests/UsageNotificationCardLayoutTests.swift`: fixed-width SwiftUI layout regression test for long permission text.
+- Create `Sources/AiQokkaMenubar/UsageMilestone.swift`: 10% usage milestone evaluation, persisted deduplication, and coordination.
+- Create `Sources/AiQokkaMenubar/UsageNtfy.swift`: optional settings, gateway configuration, CLI adapter, and environment injection.
+- Create `Tests/AiQokkaMenubarTests/UsageMilestoneTests.swift`: milestone boundaries, reset identity, persistence, disabled mode, and retry behavior.
+- Create `Tests/AiQokkaMenubarTests/UsageNtfySettingsTests.swift`: optional configuration persistence and empty-path behavior.
+- Create `Tests/AiQokkaMenubarTests/AgentNotifyCommandRunnerTests.swift`: CLI arguments, config environment, and failure result behavior.
 - Modify `Tests/AiQokkaMenubarTests/UsageStoreTests.swift`: verify the success callback runs only after a successful refresh.
 - Do not modify `Package.swift` or `Sources/AiQokkaMenubar/Resources/Info.plist`; `UserNotifications` is part of the macOS SDK. The bundle script signs the assembled app when a local Apple Development identity is available.
 

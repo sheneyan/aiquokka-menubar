@@ -95,7 +95,7 @@ struct UsageCommandRunner: Sendable {
     }
 }
 
-final class ProcessCommandExecutor: CommandExecutor, @unchecked Sendable {
+final class ProcessCommandExecutor: CommandExecutor, EnvironmentCommandExecutor, @unchecked Sendable {
     private let proxyEnvironment: any ProxyEnvironmentProviding
 
     init(proxyEnvironment: any ProxyEnvironmentProviding = SystemProxyEnvironment()) {
@@ -103,6 +103,15 @@ final class ProcessCommandExecutor: CommandExecutor, @unchecked Sendable {
     }
 
     func run(executableURL: URL, arguments: [String], timeout: Duration) async throws -> CommandOutput {
+        try await run(executableURL: executableURL, arguments: arguments, environment: [:], timeout: timeout)
+    }
+
+    func run(
+        executableURL: URL,
+        arguments: [String],
+        environment extraEnvironment: [String: String],
+        timeout: Duration
+    ) async throws -> CommandOutput {
         try await withCheckedThrowingContinuation { continuation in
             let process = Process()
             let stdoutPipe = Pipe()
@@ -121,6 +130,7 @@ final class ProcessCommandExecutor: CommandExecutor, @unchecked Sendable {
 
             var environment = ProcessInfo.processInfo.environment
             environment.merge(proxyEnvironment.environmentVariables()) { _, resolved in resolved }
+            environment.merge(extraEnvironment) { _, resolved in resolved }
             process.environment = environment
             process.executableURL = executableURL
             process.arguments = arguments
@@ -145,7 +155,7 @@ final class ProcessCommandExecutor: CommandExecutor, @unchecked Sendable {
                 if process.isRunning {
                     process.terminate()
                 }
-                finish(.failure(CommandExecutorError.timeout))
+                continuation.resume(throwing: CommandExecutorError.timeout)
             }
         }
     }

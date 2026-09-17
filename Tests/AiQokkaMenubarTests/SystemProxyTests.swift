@@ -57,6 +57,62 @@ final class ProcessCommandExecutorTests: XCTestCase {
         XCTAssertEqual(output.status, 0)
         XCTAssertTrue(output.stdout.split(separator: "\n").contains("HTTP_PROXY=http://127.0.0.1:29290"))
     }
+
+    func testTimeoutResumesTheAwaitingCaller() async {
+        let executor = ProcessCommandExecutor(proxyEnvironment: FixedProxyEnvironment(environment: [:]))
+        let recorder = ProcessCompletionRecorder()
+
+        Task {
+            do {
+                _ = try await executor.run(
+                    executableURL: URL(fileURLWithPath: "/bin/sleep"),
+                    arguments: ["10"],
+                    timeout: .milliseconds(50)
+                )
+                await recorder.record(false)
+            } catch let error as CommandExecutorError {
+                await recorder.record(error == .timeout)
+            } catch {
+                await recorder.record(false)
+            }
+        }
+
+        try? await Task.sleep(for: .seconds(1))
+
+        let result = await recorder.value()
+        XCTAssertEqual(result, true)
+    }
+
+    func testExtraEnvironmentIsPassedAlongsideTheSystemProxy() async throws {
+        let executor = ProcessCommandExecutor(
+            proxyEnvironment: FixedProxyEnvironment(environment: [
+                "HTTP_PROXY": "http://127.0.0.1:29290"
+            ])
+        )
+
+        let output = try await executor.run(
+            executableURL: URL(fileURLWithPath: "/usr/bin/env"),
+            arguments: [],
+            environment: ["AGENT_NOTIFY_CONFIG": "/tmp/agent-notify.env"],
+            timeout: .seconds(5)
+        )
+
+        let lines = Set(output.stdout.split(separator: "\n"))
+        XCTAssertTrue(lines.contains("HTTP_PROXY=http://127.0.0.1:29290"))
+        XCTAssertTrue(lines.contains("AGENT_NOTIFY_CONFIG=/tmp/agent-notify.env"))
+    }
+}
+
+private actor ProcessCompletionRecorder {
+    private var result: Bool?
+
+    func record(_ value: Bool) {
+        result = value
+    }
+
+    func value() -> Bool? {
+        result
+    }
 }
 
 private struct FixedProxyEnvironment: ProxyEnvironmentProviding {

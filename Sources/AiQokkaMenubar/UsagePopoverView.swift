@@ -13,10 +13,12 @@ struct UsagePopoverView: View {
     @ObservedObject var store: UsageStore
     @ObservedObject var displayMode: DisplayModeSettings
     @ObservedObject var alertCoordinator: UsageAlertCoordinator
+    @ObservedObject var ntfySettings: UsageNtfySettings
     let surface: UsageSurface
     let onDisplayModeChanged: (DisplayMode) -> Void
 
     private let maxContentHeight: CGFloat = 560
+    @State private var isNtfySettingsExpanded = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -45,6 +47,8 @@ struct UsagePopoverView: View {
                 )
             }
 
+            Divider()
+            ntfySettingsSection
             Divider()
             displayModePicker
             footer
@@ -146,6 +150,67 @@ struct UsagePopoverView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
+    }
+
+    private var ntfySettingsSection: some View {
+        DisclosureGroup(isExpanded: $isNtfySettingsExpanded) {
+            VStack(alignment: .leading, spacing: 9) {
+                Toggle("启用 ntfy 用量提醒", isOn: $ntfySettings.isEnabled)
+
+                pathField(
+                    label: "可执行文件",
+                    placeholder: "/绝对路径/agent-notify",
+                    text: $ntfySettings.agentNotifyExecutablePath
+                )
+                pathField(
+                    label: "配置文件",
+                    placeholder: "~/.config/agent-notify/agent-notify.env",
+                    text: $ntfySettings.agentNotifyConfigPath
+                )
+
+                Text("服务地址、topic 和 token 继续由配置文件管理；App 不保存 token。")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(ntfySettings.statusText)
+                    .font(.caption2)
+                    .foregroundStyle(ntfyStatusColor)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.top, 8)
+        } label: {
+            HStack(spacing: 8) {
+                Label("ntfy 用量提醒", systemImage: ntfySettings.isEnabled ? "dot.radiowaves.left.and.right" : "bell.slash")
+                Spacer()
+                Text(ntfySettings.isEnabled ? "已启用" : "已关闭")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+    }
+
+    private func pathField(
+        label: String,
+        placeholder: String,
+        text: Binding<String>
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            TextField(placeholder, text: text)
+                .textFieldStyle(.roundedBorder)
+                .font(.caption)
+                .frame(maxWidth: .infinity)
+        }
+    }
+
+    private var ntfyStatusColor: Color {
+        guard ntfySettings.isEnabled else { return .secondary }
+        return ntfySettings.configuration.isConfigured ? .green : .orange
     }
 
     @ViewBuilder

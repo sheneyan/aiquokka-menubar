@@ -7,26 +7,34 @@ struct AiQokkaMenubarApp: App {
     @StateObject private var store: UsageStore
     @StateObject private var displayMode: DisplayModeSettings
     @StateObject private var alertCoordinator: UsageAlertCoordinator
+    @StateObject private var ntfySettings: UsageNtfySettings
     private let controller: StandaloneWindowController
 
     init() {
         let runner = UsageCommandRunner()
         let decoder = UsageYAMLDecoder()
         let alertCoordinator = UsageAlertCoordinator()
+        let ntfySettings = UsageNtfySettings()
+        let milestoneCoordinator = UsageMilestoneCoordinator(
+            configurationProvider: { ntfySettings.configuration }
+        )
         let store = UsageStore(loader: {
             let yaml = try await runner.fetchYAML()
             return try decoder.decode(yaml: yaml)
         }, didLoadSnapshot: { snapshot in
             await alertCoordinator.process(snapshot: snapshot)
+            await milestoneCoordinator.process(snapshot: snapshot)
         })
         let displayMode = DisplayModeSettings()
         _store = StateObject(wrappedValue: store)
         _displayMode = StateObject(wrappedValue: displayMode)
         _alertCoordinator = StateObject(wrappedValue: alertCoordinator)
+        _ntfySettings = StateObject(wrappedValue: ntfySettings)
         let controller = StandaloneWindowController(
             store: store,
             displayMode: displayMode,
-            alertCoordinator: alertCoordinator
+            alertCoordinator: alertCoordinator,
+            ntfySettings: ntfySettings
         )
         self.controller = controller
         store.startAutoRefresh()
@@ -44,6 +52,7 @@ struct AiQokkaMenubarApp: App {
                 store: store,
                 displayMode: displayMode,
                 alertCoordinator: alertCoordinator,
+                ntfySettings: ntfySettings,
                 surface: .menuBar,
                 onDisplayModeChanged: { mode in
                     if mode == .standaloneWindow {
