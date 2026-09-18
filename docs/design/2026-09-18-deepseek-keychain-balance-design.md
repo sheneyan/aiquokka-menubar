@@ -28,6 +28,10 @@
 
 不要求 Touch ID、设备密码或 `.userPresence`。这类交互式保护会与 60 秒后台刷新冲突。Keychain item 使用仅限本机、设备解锁时可访问的等级；当前 ad-hoc 构建在同一二进制内可静默访问，重新构建后的再次授权是明确接受的行为。
 
+### 已知 ad-hoc 限制
+
+ad-hoc 签名不是稳定的开发者身份。替换为重新构建的 App 时，macOS 可能将它识别为新的 Keychain client。实际验证中，login Keychain 也可能进入 `errSecAuthFailed`（`-25293`）状态；此时 App 会显示安全错误码但不会显示 Key。用户需要先退出 App，再通过 `security lock-keychain` 与 `security unlock-keychain` 重新解锁 login keychain，输入 macOS 登录密码后重试。App 不读取、保存或传输该密码。
+
 ## 架构与数据流
 
 新增三个独立边界：

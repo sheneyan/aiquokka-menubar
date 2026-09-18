@@ -50,6 +50,17 @@ open /Applications/aiquokka.app
 
 `SIGNING_IDENTITY=-` produces an ad-hoc signed local build. If it is omitted, the build script uses the first available Apple Development identity and otherwise falls back to ad-hoc signing.
 
+### ad-hoc signing and Keychain
+
+An ad-hoc signature is appropriate for a local build, but it is not a stable developer identity: replacing the App with a newly built copy can make macOS treat it as a different Keychain client. In addition, some current macOS releases can leave the login Keychain in an authentication-failed state (`-25293`), which prevents any new generic-password item from being saved. If the DeepSeek section reports that code, quit the App and lock/unlock the login Keychain from Terminal (macOS will request the login password), then reopen the App:
+
+```bash
+security lock-keychain "$HOME/Library/Keychains/login.keychain-db"
+security unlock-keychain "$HOME/Library/Keychains/login.keychain-db"
+```
+
+The App never needs or records that password. Developer ID signing and notarization are not yet provided.
+
 To uninstall, quit aiquokka from its menu and move `/Applications/aiquokka.app` to the Trash. The App does not install background daemons or privileged helpers.
 
 ## Notifications
@@ -71,7 +82,7 @@ Review upstream aiquokka documentation for the credentials and remote endpoints 
 
 ## Current limitations
 
-- The App currently models percentage-based usage windows. Balance-only windows require the planned balance-model work.
+- Balance-only windows are displayed as values and do not create a fabricated percentage, alert, or ntfy milestone.
 - Source builds are locally signed. Developer ID signing, notarization, automatic updates, packaged downloads, and GitHub Releases are not provided yet.
 - Replacing an ad-hoc signed build may cause macOS to treat it as a new code identity for permission purposes.
 - Provider schemas and endpoints are controlled upstream and may change.
