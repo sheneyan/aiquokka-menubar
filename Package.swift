@@ -21,7 +21,8 @@ let package = Package(
             ],
             resources: [
                 .copy("Resources")
-            ]
+            ],
+            linkerSettings: [.linkedFramework("Security")]
         ),
         .testTarget(
             name: "AiQokkaMenubarTests",

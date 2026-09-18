@@ -15,7 +15,7 @@ struct UsageAlertEvaluator: Sendable {
     }
 
     private func evaluate(provider: ProviderUsage, window: UsageWindow, now: Date) -> UsageWindowAlertEvaluation? {
-        guard let used = window.usedPercent, used.isFinite, (0...100).contains(used) else {
+        guard let used = window.effectiveUsedPercent, used.isFinite else {
             return nil
         }
 

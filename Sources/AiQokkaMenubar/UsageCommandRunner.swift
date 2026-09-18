@@ -44,19 +44,22 @@ struct UsageCommandRunner: Sendable {
 
     let candidatePaths: [URL]
     private let isExecutable: @Sendable (URL) -> Bool
-    private let executor: any CommandExecutor
+    private let executor: any EnvironmentCommandExecutor
+    private let environmentProvider: any UsageEnvironmentProviding
 
     init(
         candidatePaths: [URL] = Self.defaultCandidatePaths(),
         isExecutable: @escaping @Sendable (URL) -> Bool = { url in
             FileManager.default.isExecutableFile(atPath: url.path)
         },
-        executor: any CommandExecutor = ProcessCommandExecutor()
+        executor: any EnvironmentCommandExecutor = ProcessCommandExecutor(),
+        environmentProvider: any UsageEnvironmentProviding = EmptyUsageEnvironmentProvider()
     ) {
         var seen = Set<String>()
         self.candidatePaths = candidatePaths.filter { seen.insert($0.path).inserted }
         self.isExecutable = isExecutable
         self.executor = executor
+        self.environmentProvider = environmentProvider
     }
 
     func fetchYAML() async throws -> String {
@@ -67,6 +70,7 @@ struct UsageCommandRunner: Sendable {
         let output = try await executor.run(
             executableURL: executableURL,
             arguments: ["--yml"],
+            environment: try environmentProvider.environment(),
             timeout: Self.timeout
         )
         guard output.status == 0 else {

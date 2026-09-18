@@ -48,6 +48,21 @@ final class UsageYAMLDecoderTests: XCTestCase {
         XCTAssertTrue(grok.windows.isEmpty)
     }
 
+    func testDecodesDeepSeekBalanceAndDerivesUsageFromUsedAndLimit() throws {
+        let snapshot = try decoder.decode(yaml: fixture(named: "deepseek"))
+
+        let deepSeek = try XCTUnwrap(snapshot.providers.first)
+        XCTAssertEqual(deepSeek.name, "DeepSeek")
+        XCTAssertEqual(deepSeek.plan, "API")
+        XCTAssertEqual(deepSeek.windows[0].remaining, 110)
+        XCTAssertEqual(deepSeek.windows[0].currency, "CNY")
+        XCTAssertNil(deepSeek.windows[0].effectiveUsedPercent)
+        XCTAssertEqual(deepSeek.windows[1].used, 25.5)
+        XCTAssertEqual(deepSeek.windows[1].limit, 100)
+        XCTAssertEqual(deepSeek.windows[1].effectiveUsedPercent, 25.5)
+        XCTAssertEqual(deepSeek.highestUsagePercent, 25.5)
+    }
+
     func testMalformedYAMLThrowsTypedError() {
         XCTAssertThrowsError(try decoder.decode(yaml: fixture(named: "invalid"))) { error in
             guard case UsageDecodeError.invalidDocument = error else {

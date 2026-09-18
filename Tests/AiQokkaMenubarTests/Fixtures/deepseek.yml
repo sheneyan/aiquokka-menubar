@@ -1,0 +1,11 @@
+deepseek:
+  provider: DeepSeek
+  plan: API
+  windows:
+    - label: Balance
+      remaining: 110
+      currency: CNY
+    - label: Synthetic Bundle
+      used: "25.5"
+      limit: 100
+      currency: TOKENS

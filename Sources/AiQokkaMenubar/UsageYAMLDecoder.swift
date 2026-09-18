@@ -55,6 +55,10 @@ struct UsageYAMLDecoder {
             return UsageWindow(
                 label: label,
                 usedPercent: doubleValue(rawWindow["used_percent"]),
+                used: doubleValue(rawWindow["used"]),
+                limit: doubleValue(rawWindow["limit"]),
+                remaining: doubleValue(rawWindow["remaining"]),
+                currency: stringValue(rawWindow["currency"]),
                 resetDate: reset.date,
                 resetText: reset.text
             )

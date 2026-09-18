@@ -3,6 +3,12 @@ import Foundation
 import XCTest
 
 final class UsageMilestoneEvaluatorTests: XCTestCase {
+    func testBalanceOnlyWindowDoesNotCreateAMilestone() {
+        let window = UsageWindow(label: "Balance", usedPercent: nil, remaining: 110, currency: "CNY", resetDate: nil, resetText: nil)
+        let snapshot = UsageSnapshot(providers: [ProviderUsage(id: "deepseek", name: "DeepSeek", plan: "API", error: nil, windows: [window], extras: [])], fetchedAt: .distantPast)
+
+        XCTAssertTrue(UsageMilestoneEvaluator().evaluate(snapshot: snapshot).isEmpty)
+    }
     private let evaluator = UsageMilestoneEvaluator()
     private let now = Date(timeIntervalSince1970: 1_000_000)
 

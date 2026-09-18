@@ -23,19 +23,56 @@ struct ProviderUsage: Identifiable, Equatable, Sendable {
     let extras: [UsageExtra]
 
     var highestUsagePercent: Double? {
-        windows.compactMap(\.usedPercent).max()
+        windows.compactMap(\.effectiveUsedPercent).max()
     }
 
     var primaryWindow: UsageWindow? {
-        windows.max { ($0.usedPercent ?? -1) < ($1.usedPercent ?? -1) }
+        if let usageWindow = windows.max(by: { ($0.effectiveUsedPercent ?? -1) < ($1.effectiveUsedPercent ?? -1) }),
+           usageWindow.effectiveUsedPercent != nil {
+            return usageWindow
+        }
+        return windows.first(where: { $0.remaining != nil }) ?? windows.first
     }
 }
 
 struct UsageWindow: Equatable, Sendable {
     let label: String
     let usedPercent: Double?
+    let used: Double?
+    let limit: Double?
+    let remaining: Double?
+    let currency: String?
     let resetDate: Date?
     let resetText: String?
+
+    init(
+        label: String,
+        usedPercent: Double?,
+        used: Double? = nil,
+        limit: Double? = nil,
+        remaining: Double? = nil,
+        currency: String? = nil,
+        resetDate: Date?,
+        resetText: String?
+    ) {
+        self.label = label
+        self.usedPercent = usedPercent
+        self.used = used
+        self.limit = limit
+        self.remaining = remaining
+        self.currency = currency
+        self.resetDate = resetDate
+        self.resetText = resetText
+    }
+
+    var effectiveUsedPercent: Double? {
+        if let usedPercent, (0 ... 100).contains(usedPercent) {
+            return usedPercent
+        }
+        guard let used, let limit, limit > 0 else { return nil }
+        let percent = used / limit * 100
+        return (0 ... 100).contains(percent) ? percent : nil
+    }
 }
 
 struct UsageExtra: Equatable, Sendable {

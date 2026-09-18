@@ -64,7 +64,8 @@ ntfy forwarding is disabled by default. When enabled, the App runs a separately 
 - This App runs `aiquokka --yml` directly and parses its standard output.
 - The App does not upload provider usage data or credentials.
 - Optional ntfy notifications send only the generated milestone message through the `agent-notify` configuration you provide.
-- DeepSeek Keychain bridging and balance-specific display are designed but are not part of the current release.
+- DeepSeek can be configured in the App with a `SecureField`; the key is kept in the local macOS Keychain and is injected only into the launched `aiquokka` process. It is never imported from shell profiles.
+- Balance-style provider windows (for example DeepSeek CNY credit) are displayed as a balance, never fabricated into a percentage or usage alert.
 
 Review upstream aiquokka documentation for the credentials and remote endpoints used by each provider.
 

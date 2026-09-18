@@ -47,9 +47,8 @@ struct UsageMilestoneEvaluator: Sendable {
         snapshot.providers.flatMap { provider -> [UsageQuotaMilestone] in
             guard provider.error == nil else { return [] }
             return provider.windows.compactMap { window in
-                guard let usedPercent = window.usedPercent,
-                      usedPercent.isFinite,
-                      (0...100).contains(usedPercent)
+                guard let usedPercent = window.effectiveUsedPercent,
+                      usedPercent.isFinite
                 else {
                     return nil
                 }

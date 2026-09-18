@@ -8,10 +8,12 @@ struct AiQokkaMenubarApp: App {
     @StateObject private var displayMode: DisplayModeSettings
     @StateObject private var alertCoordinator: UsageAlertCoordinator
     @StateObject private var ntfySettings: UsageNtfySettings
+    @StateObject private var deepSeekSettings: DeepSeekSettings
     private let controller: StandaloneWindowController
 
     init() {
-        let runner = UsageCommandRunner()
+        let credentialStore = KeychainDeepSeekCredentialStore()
+        let runner = UsageCommandRunner(environmentProvider: DeepSeekEnvironmentProvider(credentialStore: credentialStore))
         let decoder = UsageYAMLDecoder()
         let alertCoordinator = UsageAlertCoordinator()
         let ntfySettings = UsageNtfySettings()
@@ -26,15 +28,18 @@ struct AiQokkaMenubarApp: App {
             await milestoneCoordinator.process(snapshot: snapshot)
         })
         let displayMode = DisplayModeSettings()
+        let deepSeekSettings = DeepSeekSettings(credentialStore: credentialStore, refresh: { await store.refresh() })
         _store = StateObject(wrappedValue: store)
         _displayMode = StateObject(wrappedValue: displayMode)
         _alertCoordinator = StateObject(wrappedValue: alertCoordinator)
         _ntfySettings = StateObject(wrappedValue: ntfySettings)
+        _deepSeekSettings = StateObject(wrappedValue: deepSeekSettings)
         let controller = StandaloneWindowController(
             store: store,
             displayMode: displayMode,
             alertCoordinator: alertCoordinator,
-            ntfySettings: ntfySettings
+            ntfySettings: ntfySettings,
+            deepSeekSettings: deepSeekSettings
         )
         self.controller = controller
         store.startAutoRefresh()
@@ -53,6 +58,7 @@ struct AiQokkaMenubarApp: App {
                 displayMode: displayMode,
                 alertCoordinator: alertCoordinator,
                 ntfySettings: ntfySettings,
+                deepSeekSettings: deepSeekSettings,
                 surface: .menuBar,
                 onDisplayModeChanged: { mode in
                     if mode == .standaloneWindow {
