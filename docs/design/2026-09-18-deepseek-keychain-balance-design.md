@@ -1,6 +1,6 @@
 # DeepSeek Keychain 与余额展示设计
 
-> Status: approved design; not implemented in the current release.
+> Status: implemented in the current release; real-key Keychain behavior still requires user-assisted validation on the target Mac.
 
 ## 目标
 

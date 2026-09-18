@@ -20,6 +20,20 @@ final class UsageCommandRunnerTests: XCTestCase {
         XCTAssertEqual(executor.requests[0].arguments, ["--yml"])
     }
 
+    func testInjectsDeepSeekKeyOnlyIntoTheChildEnvironment() async throws {
+        let executor = RecordingCommandExecutor(result: .success(.init(stdout: "deepseek: {}", stderr: "", status: 0)))
+        let runner = UsageCommandRunner(
+            candidatePaths: [URL(fileURLWithPath: "/bin/aiquokka")],
+            isExecutable: { _ in true },
+            executor: executor,
+            environmentProvider: DeepSeekEnvironmentProvider(credentialStore: TestKeyStore(value: "test-key"))
+        )
+
+        _ = try await runner.fetchYAML()
+
+        XCTAssertEqual(executor.requests.single?.environment, ["DEEPSEEK_API_KEY": "test-key"])
+    }
+
     func testNotFoundIncludesAllAttemptedPaths() async {
         let executor = RecordingCommandExecutor(result: .success(.init(stdout: "", stderr: "", status: 0)))
         let candidates = [URL(fileURLWithPath: "/one/aiquokka"), URL(fileURLWithPath: "/two/aiquokka")]
@@ -85,10 +99,18 @@ final class UsageCommandRunnerTests: XCTestCase {
     }
 }
 
-private final class RecordingCommandExecutor: CommandExecutor, @unchecked Sendable {
+private struct TestKeyStore: DeepSeekCredentialStore {
+    let value: String?
+    func load() throws -> String? { value }
+    func save(_ key: String) throws {}
+    func delete() throws {}
+}
+
+private final class RecordingCommandExecutor: EnvironmentCommandExecutor, @unchecked Sendable {
     struct Request: Equatable {
         let executableURL: URL
         let arguments: [String]
+        let environment: [String: String]
     }
 
     private let result: Result<CommandOutput, CommandExecutorError>
@@ -98,8 +120,12 @@ private final class RecordingCommandExecutor: CommandExecutor, @unchecked Sendab
         self.result = result
     }
 
-    func run(executableURL: URL, arguments: [String], timeout: Duration) async throws -> CommandOutput {
-        requests.append(Request(executableURL: executableURL, arguments: arguments))
+    func run(executableURL: URL, arguments: [String], environment: [String: String], timeout: Duration) async throws -> CommandOutput {
+        requests.append(Request(executableURL: executableURL, arguments: arguments, environment: environment))
         return try result.get()
     }
+}
+
+private extension Array {
+    var single: Element? { count == 1 ? first : nil }
 }

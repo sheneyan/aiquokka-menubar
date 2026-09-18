@@ -10,6 +10,7 @@ final class StandaloneWindowController: NSObject, NSWindowDelegate {
     private let displayMode: DisplayModeSettings
     private let alertCoordinator: UsageAlertCoordinator
     private let ntfySettings: UsageNtfySettings
+    private let deepSeekSettings: DeepSeekSettings
     private var closingForModeChange = false
     private var terminating = false
 
@@ -19,12 +20,14 @@ final class StandaloneWindowController: NSObject, NSWindowDelegate {
         store: UsageStore,
         displayMode: DisplayModeSettings,
         alertCoordinator: UsageAlertCoordinator,
-        ntfySettings: UsageNtfySettings
+        ntfySettings: UsageNtfySettings,
+        deepSeekSettings: DeepSeekSettings
     ) {
         self.store = store
         self.displayMode = displayMode
         self.alertCoordinator = alertCoordinator
         self.ntfySettings = ntfySettings
+        self.deepSeekSettings = deepSeekSettings
         super.init()
 
         NotificationCenter.default.addObserver(
@@ -51,6 +54,7 @@ final class StandaloneWindowController: NSObject, NSWindowDelegate {
             displayMode: displayMode,
             alertCoordinator: alertCoordinator,
             ntfySettings: ntfySettings,
+            deepSeekSettings: deepSeekSettings,
             surface: .standaloneWindow,
             onDisplayModeChanged: { [weak self] mode in
                 if mode == .standaloneWindow {

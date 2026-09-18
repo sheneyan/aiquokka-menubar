@@ -14,11 +14,13 @@ struct UsagePopoverView: View {
     @ObservedObject var displayMode: DisplayModeSettings
     @ObservedObject var alertCoordinator: UsageAlertCoordinator
     @ObservedObject var ntfySettings: UsageNtfySettings
+    @ObservedObject var deepSeekSettings: DeepSeekSettings
     let surface: UsageSurface
     let onDisplayModeChanged: (DisplayMode) -> Void
 
     private let maxContentHeight: CGFloat = 560
     @State private var isNtfySettingsExpanded = false
+    @State private var isDeepSeekSettingsExpanded = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -47,6 +49,8 @@ struct UsagePopoverView: View {
                 )
             }
 
+            Divider()
+            deepSeekSettingsSection
             Divider()
             ntfySettingsSection
             Divider()
@@ -198,6 +202,43 @@ struct UsagePopoverView: View {
                 Text(ntfySettings.isEnabled ? "已启用" : "已关闭")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+    }
+
+    private var deepSeekSettingsSection: some View {
+        DisclosureGroup(isExpanded: $isDeepSeekSettingsExpanded) {
+            VStack(alignment: .leading, spacing: 9) {
+                SecureField("DeepSeek API Key", text: $deepSeekSettings.draftKey)
+                    .textFieldStyle(.roundedBorder)
+                HStack {
+                    Button("保存") { Task { await deepSeekSettings.save() } }
+                        .disabled(deepSeekSettings.isBusy)
+                    if deepSeekSettings.isConfigured {
+                        Button("删除") { Task { await deepSeekSettings.delete() } }
+                            .disabled(deepSeekSettings.isBusy)
+                    }
+                    if deepSeekSettings.isBusy { ProgressView().controlSize(.small) }
+                    Spacer()
+                    Text(deepSeekSettings.isConfigured ? "已配置" : "未配置")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Text("仅保存到本机钥匙串，并且仅在运行 aiquokka 时注入给该子进程。")
+                    .font(.caption2).foregroundStyle(.secondary)
+                if let error = deepSeekSettings.errorMessage {
+                    Text(error).font(.caption2).foregroundStyle(.orange)
+                }
+            }
+            .padding(.top, 8)
+        } label: {
+            HStack(spacing: 8) {
+                Label("DeepSeek", systemImage: "key")
+                Spacer()
+                Text(deepSeekSettings.isConfigured ? "已配置" : "未配置")
+                    .font(.caption).foregroundStyle(.secondary)
             }
         }
         .padding(.horizontal, 16)
@@ -434,6 +475,10 @@ private struct ProviderSummaryRow: View {
                     Text(percentText(highestUsage))
                         .font(.subheadline.weight(.semibold))
                         .monospacedDigit()
+                } else if let primaryWindow = provider.primaryWindow {
+                    Text(UsageValuePresentation(window: primaryWindow).valueText)
+                        .font(.subheadline.weight(.semibold))
+                        .monospacedDigit()
                 }
             }
 
@@ -446,6 +491,10 @@ private struct ProviderSummaryRow: View {
             } else if let highestUsage = provider.highestUsagePercent {
                 ProgressView(value: max(0, min(highestUsage, 100)), total: 100)
                     .tint(quotaProgressColor(for: highestUsage))
+            } else if provider.primaryWindow != nil {
+                Text("余额窗口")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             } else {
                 Text("没有可用的使用率窗口")
                     .font(.caption)
@@ -478,23 +527,19 @@ private struct UsageWindowRow: View {
     let window: UsageWindow
 
     var body: some View {
+        let presentation = UsageValuePresentation(window: window)
         VStack(alignment: .leading, spacing: 5) {
             HStack {
                 Text(window.label)
                     .font(.subheadline.weight(.medium))
                 Spacer()
-                if let usedPercent = window.usedPercent {
-                    Text(String(format: "%.1f%%", usedPercent))
-                        .monospacedDigit()
-                } else {
-                    Text("—")
-                        .foregroundStyle(.secondary)
-                }
+                Text(presentation.valueText).monospacedDigit().foregroundStyle(presentation.progressPercent == nil ? .secondary : .primary)
             }
-            if let usedPercent = window.usedPercent {
+            if let usedPercent = presentation.progressPercent {
                 ProgressView(value: max(0, min(usedPercent, 100)), total: 100)
                     .tint(quotaProgressColor(for: usedPercent))
             }
+            if let detail = presentation.detailText { Text(detail).font(.caption).foregroundStyle(.secondary) }
             if let resetDate = window.resetDate {
                 Text("重置：\(DateFormatter.localizedString(from: resetDate, dateStyle: .short, timeStyle: .short))")
                     .font(.caption)

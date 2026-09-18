@@ -3,6 +3,12 @@ import Foundation
 import XCTest
 
 final class UsageAlertEvaluatorTests: XCTestCase {
+    func testUsedAndLimitCanTriggerTheEightyPercentAlert() {
+        let window = UsageWindow(label: "API", usedPercent: nil, used: 80, limit: 100, resetDate: nil, resetText: nil)
+        let snapshot = UsageSnapshot(providers: [ProviderUsage(id: "deepseek", name: "DeepSeek", plan: nil, error: nil, windows: [window], extras: [])], fetchedAt: .distantPast)
+
+        XCTAssertEqual(UsageAlertEvaluator().evaluate(snapshot: snapshot, now: .distantPast).windows.first?.selectedAlert?.kind, .nearingLimit)
+    }
     private let evaluator = UsageAlertEvaluator()
     private let now = Date(timeIntervalSince1970: 1_000_000)
 
