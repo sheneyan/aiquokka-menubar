@@ -30,6 +30,8 @@ final class DeepSeekSettings: ObservableObject {
             isConfigured = true
             errorMessage = nil
             await refresh()
+        } catch let error as DeepSeekCredentialError {
+            errorMessage = "无法保存 DeepSeek 凭据（\(error.localizedDescription)）。"
         } catch { errorMessage = "无法保存 DeepSeek 凭据。" }
     }
 
@@ -42,6 +44,8 @@ final class DeepSeekSettings: ObservableObject {
             isConfigured = false
             errorMessage = nil
             await refresh()
+        } catch let error as DeepSeekCredentialError {
+            errorMessage = "无法删除 DeepSeek 凭据（\(error.localizedDescription)）。"
         } catch { errorMessage = "无法删除 DeepSeek 凭据。" }
     }
 }
