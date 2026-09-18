@@ -1,5 +1,7 @@
 # DeepSeek Keychain 与余额展示设计
 
+> Status: approved design; not implemented in the current release.
+
 ## 目标
 
 让 macOS 菜单栏 App 在不读取 `~/.zshrc`、不把密钥写入 `UserDefaults` 或项目文件的前提下，稳定向本地 `aiquokka --yml` 提供 `DEEPSEEK_API_KEY`，并正确展示 DeepSeek 返回的余额型窗口。
@@ -31,7 +33,7 @@
 新增三个独立边界：
 
 - `DeepSeekCredentialStore`：定义 `load`、`save`、`delete` 和配置状态所需的最小接口。生产实现封装 Security Framework，测试实现使用内存存储。
-- `KeychainDeepSeekCredentialStore`：使用固定 service `com.local.aiquokka-menubar.deepseek` 和 account `DEEPSEEK_API_KEY` 保存 generic password item。重复保存执行更新，不创建多个 item；删除不存在的 item 按成功处理。
+- `KeychainDeepSeekCredentialStore`：使用固定 service `io.github.sheneyan.aiquokka-menubar.deepseek` 和 account `DEEPSEEK_API_KEY` 保存 generic password item。重复保存执行更新，不创建多个 item；删除不存在的 item 按成功处理。
 - `DeepSeekSettings`：`@MainActor`、`ObservableObject` 的界面状态模型，持有输入草稿、是否已配置、是否正在保存和可展示错误。它不长期缓存已保存的明文 Key。
 
 刷新链路保持单向：

@@ -31,7 +31,7 @@ README 必须明确：
 - 本项目不复制上游 Go provider 实现，不直接接管其登录流程或远端 API 请求。
 - 上游项目使用链接和文字署名说明，不把上游作者的版权声明写成本仓库源码的版权归属。
 
-App 的 bundle identifier 从本地占位值 `com.local.aiquokka-menubar` 改为公开且稳定的 `io.github.sheneyan.aiquokka-menubar`。构建脚本、Info.plist、文档和后续 Keychain service 等所有身份相关引用必须保持一致；公开基线完成后不应残留旧 bundle identifier，历史提交除外。
+App 的 bundle identifier 从原有的本地占位值改为公开且稳定的 `io.github.sheneyan.aiquokka-menubar`。构建脚本、Info.plist、文档和后续 Keychain service 等所有身份相关引用必须保持一致；公开基线完成后不应残留旧 bundle identifier，历史提交除外。
 
 ## 公开文档结构
 
@@ -83,7 +83,7 @@ MIT 授权覆盖本仓库作者拥有权利的源码和文档，不自动改变�
 
 - API key、OAuth token、authorization header、私钥和常见 provider 凭据格式。
 - 真实 provider YAML/JSON 响应、账号标识、余额、配额、邮箱及通知 endpoint。
-- `/Users/...` 等本机绝对路径和只对作者机器有效的命令。
+- 本机绝对路径和只对作者机器有效的命令。
 - 构建产物、`.DS_Store`、临时文件、研究草稿和未计划发布的日志。
 
 敏感信息扫描使用可获得的专用 secret scanner；若本机没有该工具，使用 Git 内容遍历配合有针对性的模式扫描，并在交付报告中说明覆盖范围和限制。检测结果按风险处理：
@@ -122,7 +122,7 @@ MIT 授权覆盖本仓库作者拥有权利的源码和文档，不自动改变�
 - 根目录包含准确的 `README.md`、MIT `LICENSE` 和经核实的 `THIRD_PARTY_NOTICES.md`。
 - 当前树不再包含 `docs/superpowers/plans/`，长期设计文档位于 `docs/design/`。
 - `.DS_Store` 被忽略，未跟踪的 `docs/research/` 没有被删除或提交。
-- 当前树不含旧的 `com.local.aiquokka-menubar` 身份引用；已构建 App 使用新的 bundle identifier。
+- 当前树不含旧的本地占位身份引用；已构建 App 使用新的 bundle identifier。
 - README 只描述已实现功能，明确 DeepSeek Keychain 支持尚未发布。
 - 当前树和完整历史完成敏感信息审计，没有未处置的真实秘密或个人数据。
 - 全量测试、App 构建和签名验证通过。
