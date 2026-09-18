@@ -131,21 +131,23 @@ final class UsageNtfySettings: ObservableObject {
         homeDirectory: URL,
         fileManager: FileManager = .default
     ) -> String {
+        defaultExecutablePath(
+            homeDirectory: homeDirectory,
+            isExecutable: { fileManager.isExecutableFile(atPath: $0) }
+        )
+    }
+
+    static func defaultExecutablePath(
+        homeDirectory: URL,
+        isExecutable: (String) -> Bool
+    ) -> String {
         let candidates = [
             homeDirectory.appendingPathComponent(".local/bin/agent-notify"),
             URL(fileURLWithPath: "/opt/homebrew/bin/agent-notify"),
             URL(fileURLWithPath: "/usr/local/bin/agent-notify")
         ]
-        if let installedPath = candidates.first(where: { fileManager.isExecutableFile(atPath: $0.path) })?.path {
-            return installedPath
-        }
-
-        // Keep the known local gateway path useful without probing a protected
-        // Documents directory during startup. The actual access check happens
-        // only after the user enables ntfy.
-        return homeDirectory
-            .appendingPathComponent("Documents/Work/Sources/tailscale_ops/agent-notify/.venv/bin/agent-notify")
-            .path
+        return candidates.first(where: { isExecutable($0.path) })?.path
+            ?? candidates[0].path
     }
 }
 

@@ -2,3 +2,4 @@
 dist/
 .swiftpm/
 .worktrees/
+.DS_Store

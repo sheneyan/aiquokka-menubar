@@ -68,6 +68,21 @@ final class UsageNtfySettingsTests: XCTestCase {
         XCTAssertTrue(settings.statusText.contains("0600"))
     }
 
+    func testDefaultExecutablePathFallsBackToUserLocalBin() {
+        let homeDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("aiquokka-home-\(UUID().uuidString)")
+
+        let path = UsageNtfySettings.defaultExecutablePath(
+            homeDirectory: homeDirectory,
+            isExecutable: { _ in false }
+        )
+
+        XCTAssertEqual(
+            path,
+            homeDirectory.appendingPathComponent(".local/bin/agent-notify").path
+        )
+    }
+
     private func makeDefaults() -> UserDefaults {
         let suiteName = "AiQokkaUsageNtfySettingsTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
