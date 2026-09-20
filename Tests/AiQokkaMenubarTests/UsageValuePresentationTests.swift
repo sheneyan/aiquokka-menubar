@@ -37,6 +37,18 @@ final class UsageValuePresentationTests: XCTestCase {
         XCTAssertNil(provider.balanceSummaryText)
     }
 
+    func testCollapsedProviderSummaryPrefersDualCurrencyBalance() {
+        let provider = ProviderUsage(
+            id: "deepseek", name: "DeepSeek", plan: "API", error: nil,
+            windows: [
+                UsageWindow(label: "CNY", usedPercent: nil, remaining: 95.02, currency: "CNY", resetDate: nil, resetText: nil),
+                UsageWindow(label: "USD", usedPercent: nil, remaining: 0, currency: "USD", resetDate: nil, resetText: nil)
+            ], extras: []
+        )
+
+        XCTAssertEqual(providerSummaryValueText(provider), "$0.00 / ¥95.02")
+    }
+
     func testFormatsCurrencyBalanceWithoutProgress() {
         let value = UsageValuePresentation(window: UsageWindow(
             label: "Balance", usedPercent: nil, remaining: 110, currency: "CNY", resetDate: nil, resetText: nil
