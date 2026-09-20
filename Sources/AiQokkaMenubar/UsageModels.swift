@@ -33,6 +33,20 @@ struct ProviderUsage: Identifiable, Equatable, Sendable {
         }
         return windows.first(where: { $0.remaining != nil }) ?? windows.first
     }
+
+    var balanceSummaryText: String? {
+        guard highestUsagePercent == nil else { return nil }
+
+        let usd = windows.first { $0.currency?.uppercased() == "USD" }?.remaining
+        let cny = windows.first {
+            ["CNY", "RMB"].contains($0.currency?.uppercased() ?? "")
+        }?.remaining
+        let values = [
+            usd.map { String(format: "$%.2f", $0) },
+            cny.map { String(format: "¥%.2f", $0) }
+        ].compactMap { $0 }
+        return values.isEmpty ? nil : values.joined(separator: " / ")
+    }
 }
 
 struct UsageWindow: Equatable, Sendable {
