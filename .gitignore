@@ -3,3 +3,4 @@ dist/
 .swiftpm/
 .worktrees/
 .DS_Store
+docs/superpowers/
