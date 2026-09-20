@@ -9,6 +9,16 @@ internal enum UsageSurface {
     case standaloneWindow
 }
 
+func providerSummaryValueText(_ provider: ProviderUsage) -> String? {
+    if let highestUsage = provider.highestUsagePercent {
+        return String(format: "%.1f%%", highestUsage)
+    }
+    if let balanceSummary = provider.balanceSummaryText {
+        return balanceSummary
+    }
+    return provider.primaryWindow.map { UsageValuePresentation(window: $0).valueText }
+}
+
 struct UsagePopoverView: View {
     @ObservedObject var store: UsageStore
     @ObservedObject var displayMode: DisplayModeSettings
@@ -471,12 +481,8 @@ private struct ProviderSummaryRow: View {
                         .background(.secondary.opacity(0.12), in: Capsule())
                 }
                 Spacer()
-                if let highestUsage = provider.highestUsagePercent {
-                    Text(percentText(highestUsage))
-                        .font(.subheadline.weight(.semibold))
-                        .monospacedDigit()
-                } else if let primaryWindow = provider.primaryWindow {
-                    Text(UsageValuePresentation(window: primaryWindow).valueText)
+                if let valueText = providerSummaryValueText(provider) {
+                    Text(valueText)
                         .font(.subheadline.weight(.semibold))
                         .monospacedDigit()
                 }
@@ -507,10 +513,6 @@ private struct ProviderSummaryRow: View {
                     .foregroundStyle(.secondary)
             }
         }
-    }
-
-    private func percentText(_ percent: Double) -> String {
-        String(format: "%.1f%%", percent)
     }
 
     private func resetSummary(for window: UsageWindow) -> String {
